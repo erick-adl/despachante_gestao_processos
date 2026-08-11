@@ -69,8 +69,8 @@ import {
 } from './core/auth.js';
 
 import {
-  getOfficeData,
-  saveOfficeData
+  getClients,
+  getAgenda
 } from './core/firestore.js';
 
 
@@ -79,13 +79,17 @@ window.getCurrentUser = () => currentUser;
 
 async function loadData() {
   try {
-    const data = await getOfficeData(currentUser.uid);
+    const clients = await getClients();
 
-    if (data) {
-      state.DATA = data;
-    }
+    state.DATA.clientes = clients;
+    const agenda = await getAgenda();
+
+    state.DATA.agenda = agenda;
   } catch (e) {
-    console.error('Erro ao carregar dados do Firestore:', e);
+    console.error(
+      'Erro ao carregar clientes do Firestore:',
+      e
+    );
   }
 
   if (!state.DATA.clientes) {
@@ -100,11 +104,6 @@ async function loadData() {
     state.DATA.tiposServico = defaultTipos();
   }
 }
-
-
-
-
-
 /* ============================================================
    ROUTER / RENDER
    ============================================================ */
@@ -225,9 +224,12 @@ setTimeout(() => { const u = document.getElementById('loginUser'); if (u) u.focu
 /* ============================================================
    INIT
    ============================================================ */
+
 async function init() {
   await loadData();
+
   state.BOOTED = true;
+
   render();
 }
 

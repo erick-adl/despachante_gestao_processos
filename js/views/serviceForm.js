@@ -20,11 +20,16 @@ import {
 } from '../core/data.js';
 
 import {
-    saveData,
     saveAnexoFile,
     deleteAnexoFile,
     readFileAsBase64
 } from '../core/storage.js';
+
+import {
+    saveService,
+    deleteService,
+    saveConfiguracoes
+} from '../core/firestore.js';
 
 const TIPO_MULTA = 'Recurso de multas/CNH';
 
@@ -154,7 +159,10 @@ export async function confirmNewTipo() {
     if (!val) { showToast('Digite o nome do novo tipo de serviço.', true); return; }
     if (!state.DATA.tiposServico.includes(val)) {
         state.DATA.tiposServico.push(val);
-        await saveData();
+
+        await saveConfiguracoes({
+            tiposServico: state.DATA.tiposServico
+        });
     }
     if (!state.CURRENT_TIPOS.includes(val)) state.CURRENT_TIPOS.push(val);
     document.getElementById('tiposChecklist').innerHTML = tiposChecklistHtml();
@@ -220,7 +228,10 @@ export async function renameTipo(el) {
     if (state.CURRENT_TIPOS && state.CURRENT_TIPOS.includes(oldVal)) {
         state.CURRENT_TIPOS = state.CURRENT_TIPOS.map(x => x === oldVal ? newVal : x);
     }
-    await saveData();
+    await saveConfiguracoes({
+        tiposServico: state.DATA.tiposServico
+    });
+
     el.dataset.original = newVal;
     showToast('Tipo de serviço renomeado em todos os registros.');
     const checklist = document.getElementById('tiposChecklist');
@@ -235,7 +246,9 @@ export function deleteTipo(t) {
     showConfirm(msg, function () {
         state.DATA.tiposServico = state.DATA.tiposServico.filter(x => x !== t);
         state.CURRENT_TIPOS = state.CURRENT_TIPOS.filter(x => x !== t);
-        saveData().then(() => {
+        saveConfiguracoes({
+            tiposServico: state.DATA.tiposServico
+        }).then(() => {
             showToast('Tipo de serviço excluído.');
             const manageList = document.getElementById('tiposManageList');
             if (manageList) manageList.innerHTML = tiposManageListHtml();
@@ -418,7 +431,11 @@ export async function submitServiceForm(clienteId, existingId) {
     for (const key of state.REMOVED_ANEXO_KEYS) { await deleteAnexoFile(key); }
     sObj.anexos = anexosFinal;
     delete sObj.anexoNome;
-    await saveData();
+
+    await saveService(
+        clienteId,
+        sObj
+    );
     closeModal('serviceFormOverlay');
     showToast(existingId ? 'Serviço atualizado.' : 'Serviço adicionado.');
     go('clienteDetalhe', { id: clienteId });
@@ -429,7 +446,16 @@ export function confirmDeleteService(clienteId, servicoId) {
         const s = c.servicos.find(x => x.id === servicoId);
         const anexos = (s && s.anexos) ? s.anexos : (s && s.anexoNome ? [{ key: 'anexo:' + s.id }] : []);
         anexos.forEach(a => deleteAnexoFile(a.key));
-        c.servicos = c.servicos.filter(s => s.id !== servicoId);
-        saveData().then(() => { showToast('Serviço excluído.'); go('clienteDetalhe', { id: clienteId }); });
+        c.servicos = c.servicos.filter(
+            s => s.id !== servicoId
+        );
+
+        deleteService(
+            clienteId,
+            servicoId
+        ).then(() => {
+            showToast('Serviço excluído.');
+            go('clienteDetalhe', { id: clienteId });
+        });
     });
 }

@@ -1,33 +1,37 @@
 import { state } from '../core/state.js';
 
 import {
-    uid,
-    fmtDateLong,
-    todayISO,
-    escapeHtml
+  uid,
+  fmtDateLong,
+  todayISO,
+  escapeHtml
 } from '../core/utils.js';
 
 import { icon } from '../core/icons.js';
 
-import { saveData } from '../core/storage.js';
 
 import { closeModal } from '../components/modal.js';
 import { showToast } from '../components/toast.js';
+import { emptyState } from '../components/emptyState.js';
 import { agendaItemHtml } from '../core/data.js';
+import {
+  saveAgenda,
+  deleteAgenda
+} from '../core/firestore.js';
 
 export function viewAgenda() {
-    const items = (state.DATA.agenda || []).slice().sort((a, b) => a.data.localeCompare(b.data) || (a.hora || '').localeCompare(b.hora || ''));
-    const groups = {};
-    items.forEach(a => { (groups[a.data] = groups[a.data] || []).push(a); });
-    const dates = Object.keys(groups).sort();
-    return `
+  const items = (state.DATA.agenda || []).slice().sort((a, b) => a.data.localeCompare(b.data) || (a.hora || '').localeCompare(b.hora || ''));
+  const groups = {};
+  items.forEach(a => { (groups[a.data] = groups[a.data] || []).push(a); });
+  const dates = Object.keys(groups).sort();
+  return `
   <div class="view">
     <div class="page-head">
       <h1>Agenda</h1>
       <button class="btn btn-primary" onclick="openAgendaForm()">${icon('plus')} Novo compromisso</button>
     </div>
     ${dates.length === 0 ? emptyState('calendar', 'Nenhum compromisso agendado', 'Adicione compromissos para acompanhar sua semana.') :
-            dates.map(d => `
+      dates.map(d => `
         <div class="day-group-label">${fmtDateLong(d)}</div>
         <div class="card" style="margin-bottom:16px;">
           ${groups[d].map(a => agendaItemHtml(a)).join('')}
@@ -36,12 +40,12 @@ export function viewAgenda() {
   </div>`;
 }
 export function openAgendaForm() {
-    const overlay = document.createElement('div');
-    overlay.className = 'form-overlay';
-    overlay.id = 'agendaFormOverlay';
-    const clienteOptions = state.DATA.clientes.slice().sort((a, b) => a.nome.localeCompare(b.nome))
-        .map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
-    overlay.innerHTML = `
+  const overlay = document.createElement('div');
+  overlay.className = 'form-overlay';
+  overlay.id = 'agendaFormOverlay';
+  const clienteOptions = state.DATA.clientes.slice().sort((a, b) => a.nome.localeCompare(b.nome))
+    .map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('');
+  overlay.innerHTML = `
     <div class="form-modal" style="max-width:480px;">
       <div class="form-modal-head">
         <h3>Novo compromisso</h3>
@@ -66,24 +70,39 @@ export function openAgendaForm() {
         <button class="btn btn-primary" onclick="submitAgendaForm()">${icon('check')} Salvar compromisso</button>
       </div>
     </div>`;
-    document.body.appendChild(overlay);
+  document.body.appendChild(overlay);
 }
 export async function submitAgendaForm() {
-    const desc = document.getElementById('a_desc').value.trim();
-    if (!desc) { showToast('Descreva o compromisso.', true); return; }
-    state.DATA.agenda.push({
-        id: uid(),
-        data: document.getElementById('a_data').value || todayISO(),
-        hora: document.getElementById('a_hora').value,
-        descricao: desc,
-        clienteId: document.getElementById('a_cliente').value || null,
-    });
-    await saveData();
-    closeModal('agendaFormOverlay');
-    showToast('Compromisso salvo.');
-    render();
+  const desc = document.getElementById('a_desc').value.trim();
+
+  if (!desc) {
+    showToast('Descreva o compromisso.', true);
+    return;
+  }
+
+  const novoItem = {
+    id: uid(),
+    data: document.getElementById('a_data').value || todayISO(),
+    hora: document.getElementById('a_hora').value,
+    descricao: desc,
+    clienteId: document.getElementById('a_cliente').value || null,
+  };
+
+  state.DATA.agenda.push(novoItem);
+
+  await saveAgenda(novoItem);
+
+  closeModal('agendaFormOverlay');
+
+  showToast('Compromisso salvo.');
+
+  go('agenda');
 }
-export function deleteAgendaItem(id) {
-    state.DATA.agenda = state.DATA.agenda.filter(a => a.id !== id);
-    saveData().then(render);
+export async function deleteAgendaItem(id) {
+  await deleteAgenda(id);
+
+  state.DATA.agenda = state.DATA.agenda.filter(
+    a => a.id !== id
+  );
+  go('agenda');
 }

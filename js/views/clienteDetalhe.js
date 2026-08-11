@@ -19,12 +19,14 @@ import {
 } from '../core/data.js';
 
 import {
-  saveData,
   deleteAnexoFile
 } from '../core/storage.js';
 
 import { renderPlateChip } from '../core/utils.js';
 import { emptyState } from '../components/emptyState.js';
+import {
+  deleteClient
+} from '../core/firestore.js';
 
 
 
@@ -107,11 +109,41 @@ function serviceCardHtml(c, s) {
 }
 
 export function confirmDeleteClient(id) {
-  showConfirm('Excluir este cliente e todo o histórico de serviços? Esta ação não pode ser desfeita.', function () {
-    const c = state.DATA.clientes.find(x => x.id === id);
-    const docs = (c && c.documentos) ? c.documentos : (c && c.documentoIdentificacao ? [c.documentoIdentificacao] : []);
-    docs.forEach(d => deleteAnexoFile(d.key));
-    state.DATA.clientes = state.DATA.clientes.filter(c => c.id !== id);
-    saveData().then(() => { showToast('Cliente excluído.'); go('clientes'); });
-  });
+  showConfirm(
+    'Excluir este cliente e todo o histórico de serviços? Esta ação não pode ser desfeita.',
+    async function () {
+      try {
+        const c = state.DATA.clientes.find(x => x.id === id);
+
+        const docs = c?.documentos || [];
+
+        for (const d of docs) {
+          if (d.key) {
+            await deleteAnexoFile(d.key);
+          }
+        }
+
+        const user = window.getCurrentUser();
+
+        if (!user) {
+          showToast('Usuário não autenticado.', true);
+          return;
+        }
+
+        await deleteClient(id);
+
+        state.DATA.clientes = state.DATA.clientes.filter(
+          c => c.id !== id
+        );
+
+        showToast('Cliente excluído.');
+
+        go('clientes');
+
+      } catch (error) {
+        console.error('Erro ao excluir cliente:', error);
+        showToast('Não foi possível excluir o cliente.', true);
+      }
+    }
+  );
 }

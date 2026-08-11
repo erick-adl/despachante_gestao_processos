@@ -1,20 +1,11 @@
 import { state } from './state.js';
-import { saveOfficeData } from './firestore.js';
 
 import {
     uploadFile,
     deleteFile
 } from './firebaseStorage.js';
 
-export async function saveData() {
-    const user = window.getCurrentUser();
 
-    if (!user) {
-        throw new Error('Usuário não autenticado.');
-    }
-
-    await saveOfficeData(user.uid, state.DATA);
-}
 
 export async function saveAnexoFile(key, filename, base64, mime) {
     const user = window.getCurrentUser();

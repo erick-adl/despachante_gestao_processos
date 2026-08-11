@@ -1,3 +1,4 @@
+import { saveClient } from '../core/firestore.js';
 import { state } from '../core/state.js';
 
 import {
@@ -10,11 +11,11 @@ import {
 } from '../core/utils.js';
 
 import {
-    saveData,
     saveAnexoFile,
     deleteAnexoFile,
     readFileAsBase64
 } from '../core/storage.js';
+
 
 import { icon } from '../core/icons.js';
 
@@ -208,7 +209,9 @@ export async function submitClientForm(existingId) {
     for (const key of state.REMOVED_CLIENT_ANEXO_KEYS) { await deleteAnexoFile(key); }
     clientObj.documentos = docsFinal;
     delete clientObj.documentoIdentificacao;
-    await saveData();
+    await saveClient(
+        clientObj
+    );
     closeModal('clientFormOverlay');
     showToast(existingId ? 'Cliente atualizado.' : 'Cliente cadastrado. Agora adicione um serviço, se desejar.');
     go('clienteDetalhe', { id: clientId });
