@@ -1,6 +1,6 @@
 import { state } from './state.js';
-import { showToast } from '../components/toast.js';
 import { saveOfficeData } from './firestore.js';
+
 import {
     uploadFile,
     deleteFile
@@ -8,6 +8,7 @@ import {
 
 export async function saveData() {
     const user = window.getCurrentUser();
+
     if (!user) {
         throw new Error('Usuário não autenticado.');
     }
@@ -22,23 +23,12 @@ export async function saveAnexoFile(key, filename, base64, mime) {
         throw new Error('Usuário não autenticado.');
     }
 
-    const url = await uploadFile(
+    return await uploadFile(
         user.uid,
         key,
         base64,
         mime
     );
-
-    return {
-        key,
-        filename,
-        mime,
-        url
-    };
-}
-
-export async function getAnexoFile(key) {
-    return null;
 }
 
 export async function deleteAnexoFile(key) {
@@ -56,10 +46,18 @@ export function readFileAsBase64(file) {
         const reader = new FileReader();
 
         reader.onload = () => {
-            resolve(reader.result.split(',')[1]);
+            const result = reader.result;
+
+            // Remove "data:...;base64," deixando somente o Base64
+            const base64 = result.split(',')[1];
+
+            resolve(base64);
         };
 
-        reader.onerror = reject;
+        reader.onerror = () => {
+            reject(reader.error);
+        };
+
         reader.readAsDataURL(file);
     });
 }
