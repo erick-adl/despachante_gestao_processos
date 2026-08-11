@@ -121,6 +121,15 @@ export async function openServiceForm(clienteId, servicoId) {
           <div class="money-input"><span>R$</span><input id="s_lucro" type="number" step="0.01" min="0" value="${s ? s.lucro : ''}" placeholder="0,00"></div>
         </div>
         <div class="field">
+        <label>Observações</label>
+        <textarea
+            id="s_observacoes"
+            rows="5"
+            placeholder="Digite aqui qualquer informação pertinente a este serviço..."
+            style="resize: vertical;"
+        >${s ? escapeHtml(s.observacoes || '') : ''}</textarea>
+        </div>
+        <div class="field">
           <label>Anexos (documentação em PDF, PNG ou JPEG)</label>
           <div id="anexosList">${anexosListHtml()}</div>
           <div class="file-drop" onclick="document.getElementById('s_arquivos').click()">
@@ -377,6 +386,7 @@ export async function submitServiceForm(clienteId, existingId) {
         tipoServico: state.CURRENT_TIPOS.slice(),
         cobrancas: cobrancasValidas,
         lucro: parseFloat(document.getElementById('s_lucro').value) || 0,
+        observacoes: document.getElementById('s_observacoes').value.trim(),
         infracoes: state.CURRENT_TIPOS.includes(TIPO_MULTA) ? infracoesValidas : [],
     };
     let servicoId = existingId;
