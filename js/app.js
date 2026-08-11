@@ -108,13 +108,16 @@ async function loadData() {
    ROUTER / RENDER
    ============================================================ */
 
-function render() {
+async function render() {
   const mainEl = document.getElementById('mainEl');
+
   if (!state.BOOTED) {
     mainEl.innerHTML = '<div class="loading-wrap"><div class="spinner"></div><div>Carregando dados do escritório…</div></div>';
     return;
   }
-  mainEl.innerHTML = viewContent();
+
+  mainEl.innerHTML = await viewContent();
+
   updateNavActive();
   bindGlobalEvents();
 }

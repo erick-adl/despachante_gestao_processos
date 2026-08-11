@@ -25,16 +25,23 @@ import {
 import { renderPlateChip } from '../core/utils.js';
 import { emptyState } from '../components/emptyState.js';
 import {
-  deleteClient
+  deleteClient,
+  getServices,
+  deleteService
 } from '../core/firestore.js';
 
 
 
 
-export function viewClienteDetalhe(id) {
+export async function viewClienteDetalhe(id) {
   const c = state.DATA.clientes.find(x => x.id === id);
-  if (!c) return `<div class="view">${emptyState('users', 'Cliente não encontrado', 'Volte para a lista de clientes.')}</div>`;
-  const servicos = (c.servicos || []).slice().sort((a, b) => b.data.localeCompare(a.data));
+  if (!c) {
+    return `<div class="view">${emptyState('users', 'Cliente não encontrado', 'Volte para a lista de clientes.')}</div>`;
+  }
+
+  const servicos = (await getServices(id))
+    .slice()
+    .sort((a, b) => b.data.localeCompare(a.data));
   const totalLucro = sumLucro(servicos);
   return `
   <div class="view">
@@ -115,7 +122,13 @@ export function confirmDeleteClient(id) {
       try {
         const c = state.DATA.clientes.find(x => x.id === id);
 
-        const docs = c?.documentos || [];
+        if (!c) {
+          showToast('Cliente não encontrado.', true);
+          return;
+        }
+
+        // Remove anexos do cliente
+        const docs = c.documentos || [];
 
         for (const d of docs) {
           if (d.key) {
@@ -123,15 +136,25 @@ export function confirmDeleteClient(id) {
           }
         }
 
-        const user = window.getCurrentUser();
+        // Busca e remove os serviços do cliente
+        const servicos = await getServices(id);
 
-        if (!user) {
-          showToast('Usuário não autenticado.', true);
-          return;
+        for (const s of servicos) {
+          const anexos = s.anexos || [];
+
+          for (const a of anexos) {
+            if (a.key) {
+              await deleteAnexoFile(a.key);
+            }
+          }
+
+          await deleteService(id, s.id);
         }
 
+        // Remove o cliente
         await deleteClient(id);
 
+        // Atualiza o cache local
         state.DATA.clientes = state.DATA.clientes.filter(
           c => c.id !== id
         );
@@ -142,7 +165,10 @@ export function confirmDeleteClient(id) {
 
       } catch (error) {
         console.error('Erro ao excluir cliente:', error);
-        showToast('Não foi possível excluir o cliente.', true);
+        showToast(
+          'Não foi possível excluir o cliente.',
+          true
+        );
       }
     }
   );

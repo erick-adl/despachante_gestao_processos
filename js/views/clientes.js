@@ -1,4 +1,7 @@
-import { saveClient } from '../core/firestore.js';
+import {
+    saveClient,
+    getServices
+} from '../core/firestore.js';
 import { state } from '../core/state.js';
 
 import {
@@ -29,7 +32,7 @@ let CLIENTES_LIST_QUERY = '';
 
 
 
-export function viewClientesList() {
+export async function viewClientesList() {
     return `
         <div class="view">
             <div class="page-head">
@@ -54,17 +57,23 @@ export function viewClientesList() {
                 </div>
 
                 <div id="clientesTableHost">
-                    ${clientesTableHtml()}
+                    ${await clientesTableHtml()}
                 </div>
             </div>
         </div>
     `;
 }
 
-export function onClientesSearchInput(v) {
+export async function onClientesSearchInput(v) {
     CLIENTES_LIST_QUERY = v;
-    const host = document.getElementById('clientesTableHost');
-    if (host) host.innerHTML = clientesTableHtml();
+
+    const host = document.getElementById(
+        'clientesTableHost'
+    );
+
+    if (host) {
+        host.innerHTML = await clientesTableHtml();
+    }
 }
 
 function clientAnexosListHtml() {
@@ -174,7 +183,7 @@ export async function submitClientForm(existingId) {
         Object.assign(clientObj, payload);
     } else {
         clientId = uid();
-        clientObj = Object.assign({ id: clientId, criadoEm: todayISO(), servicos: [] }, payload);
+        clientObj = Object.assign({ id: clientId, criadoEm: todayISO() }, payload);
         state.DATA.clientes.push(clientObj);
     }
     const docsFinal = [];
@@ -194,7 +203,7 @@ export async function submitClientForm(existingId) {
                 nome: a.nome,
                 mime: a.mime,
                 key,
-                url: uploaded.url
+                url: uploaded
             });
         } else {
             docsFinal.push({
@@ -245,40 +254,117 @@ export function removeCurrentClientAnexo(id) {
 }
 
 
-function clientesTableHtml() {
+async function clientesTableHtml() {
     const q = normalize(CLIENTES_LIST_QUERY);
     const qDigits = onlyDigits(CLIENTES_LIST_QUERY);
-    let list = state.DATA.clientes.slice();
+
+    const clientesComServicos = await Promise.all(
+        state.DATA.clientes.map(async c => {
+            const servicos = await getServices(c.id);
+
+            return {
+                ...c,
+                servicosCarregados: servicos
+            };
+        })
+    );
+
+    let list = clientesComServicos.slice();
+
     if (CLIENTES_LIST_QUERY.trim()) {
         list = list.filter(c => {
             const nome = normalize(c.nome);
             const cpf = onlyDigits(c.cpf);
             const telefone = onlyDigits(c.telefone);
-            const placaMatch = (c.servicos || []).some(s => normalize(s.placa).replace(/-/g, '').includes(q.replace(/-/g, '')) && q.length >= 2);
-            return nome.includes(q) || (qDigits && cpf.includes(qDigits)) || (qDigits && telefone.includes(qDigits)) || placaMatch;
+
+            const placaMatch = c.servicosCarregados.some(s =>
+                normalize(s.placa)
+                    .replace(/-/g, '')
+                    .includes(q.replace(/-/g, '')) &&
+                q.length >= 2
+            );
+
+            return (
+                nome.includes(q) ||
+                (qDigits && cpf.includes(qDigits)) ||
+                (qDigits && telefone.includes(qDigits)) ||
+                placaMatch
+            );
         });
     }
-    list = list.sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+
+    list = list.sort(
+        (a, b) =>
+            (b.criadoEm || '').localeCompare(
+                a.criadoEm || ''
+            )
+    );
+
     if (list.length === 0) {
         return CLIENTES_LIST_QUERY.trim()
-            ? emptyState('search', 'Nenhum cliente encontrado', 'Tente buscar por outro nome, CPF, telefone ou placa.')
-            : emptyState('users', 'Nenhum cliente cadastrado ainda', 'Cadastre o primeiro cliente para começar a registrar serviços.');
+            ? emptyState(
+                'search',
+                'Nenhum cliente encontrado',
+                'Tente buscar por outro nome, CPF, telefone ou placa.'
+            )
+            : emptyState(
+                'users',
+                'Nenhum cliente cadastrado ainda',
+                'Cadastre o primeiro cliente para começar a registrar serviços.'
+            );
     }
+
     return `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Serviços</th><th>Última movimentação</th><th></th></tr></thead>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>CPF</th>
+            <th>Telefone</th>
+            <th>Serviços</th>
+            <th>Última movimentação</th>
+            <th></th>
+          </tr>
+        </thead>
+
         <tbody>
           ${list.map(c => {
-        const ultimo = (c.servicos || []).slice().sort((a, b) => b.data.localeCompare(a.data))[0];
-        return `<tr class="row-click" onclick="go('clienteDetalhe',{id:'${c.id}'})">
-              <td><b>${escapeHtml(c.nome)}</b></td>
-              <td class="mono">${escapeHtml(c.cpf || '—')}</td>
-              <td class="mono">${escapeHtml(c.telefone || '—')}</td>
-              <td>${(c.servicos || []).length}</td>
-              <td>${ultimo ? fmtDateShort(ultimo.data) : '—'}</td>
-              <td style="text-align:right;">${icon('arrowleft')}</td>
-            </tr>`;
+        const ultimo = c.servicosCarregados
+            .slice()
+            .sort((a, b) =>
+                b.data.localeCompare(a.data)
+            )[0];
+
+        return `
+              <tr
+                class="row-click"
+                onclick="go('clienteDetalhe',{id:'${c.id}'})"
+              >
+                <td><b>${escapeHtml(c.nome)}</b></td>
+
+                <td class="mono">
+                    ${escapeHtml(c.cpf || '—')}
+                </td>
+
+                <td class="mono">
+                    ${escapeHtml(c.telefone || '—')}
+                </td>
+
+                <td>
+                    ${c.servicosCarregados.length}
+                </td>
+
+                <td>
+                    ${ultimo
+                ? fmtDateShort(ultimo.data)
+                : '—'}
+                </td>
+
+                <td style="text-align:right;">
+                    ${icon('arrowleft')}
+                </td>
+              </tr>`;
     }).join('')}
         </tbody>
       </table>

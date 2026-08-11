@@ -15,9 +15,7 @@ import { showToast } from '../components/toast.js';
 import { showConfirm } from '../components/confirm.js';
 import { closeModal } from '../components/modal.js';
 
-import {
-    allServicos
-} from '../core/data.js';
+
 
 import {
     saveAnexoFile,
@@ -26,6 +24,7 @@ import {
 } from '../core/storage.js';
 
 import {
+    getService,
     saveService,
     deleteService,
     saveConfiguracoes
@@ -38,9 +37,11 @@ function tiposArray(val) {
     return Array.isArray(val) ? val : [val];
 }
 
-export function openServiceForm(clienteId, servicoId) {
+export async function openServiceForm(clienteId, servicoId) {
     const c = state.DATA.clientes.find(x => x.id === clienteId);
-    const s = servicoId ? (c.servicos || []).find(x => x.id === servicoId) : null;
+    const s = servicoId
+        ? await getService(clienteId, servicoId)
+        : null;
     const isEdit = !!s;
     state.CURRENT_INFRACOES = (s && s.infracoes) ? s.infracoes.map(x => Object.assign({}, x)) : [];
     state.CURRENT_TIPOS = tiposArray(s ? s.tipoServico : null);
@@ -216,15 +217,7 @@ export async function renameTipo(el) {
     }
     const idx = state.DATA.tiposServico.indexOf(oldVal);
     if (idx >= 0) state.DATA.tiposServico[idx] = newVal;
-    state.DATA.clientes.forEach(c => {
-        (c.servicos || []).forEach(s => {
-            if (Array.isArray(s.tipoServico)) {
-                s.tipoServico = s.tipoServico.map(x => x === oldVal ? newVal : x);
-            } else if (s.tipoServico === oldVal) {
-                s.tipoServico = newVal;
-            }
-        });
-    });
+
     if (state.CURRENT_TIPOS && state.CURRENT_TIPOS.includes(oldVal)) {
         state.CURRENT_TIPOS = state.CURRENT_TIPOS.map(x => x === oldVal ? newVal : x);
     }
@@ -239,10 +232,7 @@ export async function renameTipo(el) {
 }
 export function deleteTipo(t) {
     if (t === TIPO_MULTA) { showToast('Este tipo é especial e não pode ser excluído.', true); return; }
-    const emUso = allServicos().some(s => tiposArray(s.tipoServico).includes(t));
-    const msg = emUso
-        ? 'Este tipo já foi usado em serviços registrados. Ele deixará de aparecer como opção para novos serviços, mas os registros existentes continuam mostrando o nome atual. Deseja continuar?'
-        : 'Excluir este tipo de serviço da lista?';
+    const msg = 'Excluir este tipo de serviço da lista?';
     showConfirm(msg, function () {
         state.DATA.tiposServico = state.DATA.tiposServico.filter(x => x !== t);
         state.CURRENT_TIPOS = state.CURRENT_TIPOS.filter(x => x !== t);
@@ -331,7 +321,7 @@ function anexosListHtml() {
             ${a.url ? `
                 <button
                     type="button"
-                    onclick="downloadAnexoFile('${encodeURIComponent(a.url)}', '${encodeURIComponent(a.nome)}')"
+                    onclick="downloadAnexoFile('${encodeURIComponent(a.url || '')}', '${encodeURIComponent(a.nome)}')"
                     title="Baixar">
                     ${icon('download')}
                 </button>
@@ -391,14 +381,22 @@ export async function submitServiceForm(clienteId, existingId) {
     };
     let servicoId = existingId;
     let sObj;
-    if (!c.servicos) c.servicos = [];
     if (existingId) {
-        sObj = c.servicos.find(x => x.id === existingId);
+        sObj = await getService(clienteId, existingId);
+
+        if (!sObj) {
+            showToast('Serviço não encontrado.', true);
+            return;
+        }
+
         Object.assign(sObj, payload);
     } else {
         servicoId = uid();
-        sObj = Object.assign({ id: servicoId }, payload);
-        c.servicos.push(sObj);
+
+        sObj = Object.assign(
+            { id: servicoId },
+            payload
+        );
     }
     const anexosFinal = [];
     for (const a of state.CURRENT_ANEXOS) {
@@ -416,7 +414,7 @@ export async function submitServiceForm(clienteId, existingId) {
                 nome: a.nome,
                 mime: a.mime,
                 key,
-                url: uploaded.url
+                url: uploaded
             });
         } else {
             anexosFinal.push({
@@ -441,21 +439,45 @@ export async function submitServiceForm(clienteId, existingId) {
     go('clienteDetalhe', { id: clienteId });
 }
 export function confirmDeleteService(clienteId, servicoId) {
-    showConfirm('Excluir este serviço? Esta ação não pode ser desfeita.', function () {
-        const c = state.DATA.clientes.find(x => x.id === clienteId);
-        const s = c.servicos.find(x => x.id === servicoId);
-        const anexos = (s && s.anexos) ? s.anexos : (s && s.anexoNome ? [{ key: 'anexo:' + s.id }] : []);
-        anexos.forEach(a => deleteAnexoFile(a.key));
-        c.servicos = c.servicos.filter(
-            s => s.id !== servicoId
-        );
+    showConfirm(
+        'Excluir este serviço? Esta ação não pode ser desfeita.',
+        async function () {
+            try {
+                const s = await getService(
+                    clienteId,
+                    servicoId
+                );
 
-        deleteService(
-            clienteId,
-            servicoId
-        ).then(() => {
-            showToast('Serviço excluído.');
-            go('clienteDetalhe', { id: clienteId });
-        });
-    });
+                const anexos = s?.anexos || [];
+
+                for (const a of anexos) {
+                    if (a.key) {
+                        await deleteAnexoFile(a.key);
+                    }
+                }
+
+                await deleteService(
+                    clienteId,
+                    servicoId
+                );
+
+                showToast('Serviço excluído.');
+
+                go('clienteDetalhe', {
+                    id: clienteId
+                });
+
+            } catch (error) {
+                console.error(
+                    'Erro ao excluir serviço:',
+                    error
+                );
+
+                showToast(
+                    'Não foi possível excluir o serviço.',
+                    true
+                );
+            }
+        }
+    );
 }

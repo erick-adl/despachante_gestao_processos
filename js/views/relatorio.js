@@ -13,22 +13,38 @@ import {
 import { icon } from '../core/icons.js';
 
 import {
-  allServicos,
-  servicosNoPeriodo,
   sumLucro,
   tiposArray
 } from '../core/data.js';
 
+import { getServices } from '../core/firestore.js';
 
 
 
-export function viewRelatorio() {
+
+export async function viewRelatorio() {
   const today = todayISO();
   let start = today, end = today;
   if (state.REPORT_PERIOD === 'semana') { const r = weekRangeISO(today); start = r.start; end = r.end; }
   if (state.REPORT_PERIOD === 'mes') { const r = monthRangeISO(today); start = r.start; end = r.end; }
   if (state.REPORT_PERIOD === 'custom' && state.REPORT_RANGE) { start = state.REPORT_RANGE.start; end = state.REPORT_RANGE.end; }
-  const servicos = servicosNoPeriodo(start, end).sort((a, b) => b.data.localeCompare(a.data));
+  const todosServicos = (
+    await Promise.all(
+      state.DATA.clientes.map(async c => {
+        const servicos = await getServices(c.id);
+
+        return servicos.map(s => ({
+          ...s,
+          clienteId: c.id,
+          clienteNome: c.nome
+        }));
+      })
+    )
+  ).flat();
+
+  const servicos = todosServicos
+    .filter(s => s.data >= start && s.data <= end)
+    .sort((a, b) => b.data.localeCompare(a.data));
   const total = sumLucro(servicos);
 
   const byTipo = {};

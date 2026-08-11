@@ -13,20 +13,29 @@ import {
 import { icon } from '../core/icons.js';
 
 import {
-  allServicos,
-  servicosNoPeriodo,
   sumLucro,
   agendaItemHtml
 } from '../core/data.js';
 
 import { go } from '../core/router.js';
 
-export function viewHome() {
+import { getServices } from '../core/firestore.js';
+
+export async function viewHome() {
   const today = todayISO();
   let start = today, end = today;
   if (state.HOME_PERIOD === 'semana') { const r = weekRangeISO(today); start = r.start; end = r.end; }
   if (state.HOME_PERIOD === 'mes') { const r = monthRangeISO(today); start = r.start; end = r.end; }
-  const servicos = servicosNoPeriodo(start, end);
+  const todosServicos = (
+    await Promise.all(
+      state.DATA.clientes.map(c => getServices(c.id))
+    )
+  ).flat();
+
+  const servicos = todosServicos.filter(
+    s => s.data >= start && s.data <= end
+  );
+
   const lucro = sumLucro(servicos);
   const periodLabel = state.HOME_PERIOD === 'dia' ? 'hoje' : (state.HOME_PERIOD === 'semana' ? 'nesta semana' : 'neste mês');
 
@@ -46,7 +55,7 @@ export function viewHome() {
           ${icon('search')}
           <input id="homeSearchInput" placeholder="Buscar por nome, CPF, telefone ou placa…" oninput="onSearchInput(this.value)" onkeydown="if(event.key==='Enter') submitSearch()">
         </div>
-        ${searchDropdownHtml()}
+        ${await searchDropdownHtml()}
       </div>
     </div>
 
@@ -67,7 +76,7 @@ export function viewHome() {
       <div class="card">
         <div class="card-head"><h3>Clientes cadastrados</h3></div>
         <div class="stat-value">${state.DATA.clientes.length}</div>
-        <div class="stat-sub">${allServicos().length} serviços no total</div>
+        <div class="stat-sub">${todosServicos.length} serviços no total</div>
         <button class="btn btn-primary btn-sm" style="margin-top:14px;" onclick="openClientForm()">${icon('plus')} Cadastrar cliente</button>
       </div>
 

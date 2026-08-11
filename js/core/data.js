@@ -2,26 +2,9 @@ import { state } from './state.js';
 import { escapeHtml, fmtDateHuman } from './utils.js';
 import { icon } from './icons.js';
 
-export function allServicos() {
-    const clientes = state.DATA.clientes || [];
 
-    return clientes.flatMap(cliente =>
-        (cliente.servicos || []).map(servico => ({
-            ...servico,
-            clienteId: cliente.id,
-            clienteNome: cliente.nome,
-            placa: cliente.placa
-        }))
-    );
-}
 
-export function servicosNoPeriodo(start, end) {
-    return allServicos().filter(
-        servico =>
-            servico.data >= start &&
-            servico.data <= end
-    );
-}
+
 
 export function sumLucro(list) {
     return list.reduce(
