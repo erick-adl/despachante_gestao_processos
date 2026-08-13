@@ -1,241 +1,524 @@
-# despachante_gestao_processos
+# 🚀 Despachante Gestão de Processos
 
-Sistema de Gestão de Processos para despachantes.
+Aplicação web para gestão de processos de despachantes, com suporte a múltiplos clientes e integração com Firebase.
 
-## Estrutura
+A aplicação utiliza **um único código-fonte** para diferentes clientes. Cada cliente possui seu próprio projeto Firebase e sua própria configuração.
 
-├── Visão geral
-├── Estrutura do projeto
-├── Pré-requisitos
-├── Configuração de um novo cliente
-├── Estrutura do arquivo de cliente
-├── Comandos Make
-│   ├── make clients
-│   ├── make check CLIENT=...
-│   ├── make generate-config CLIENT=...
-│   ├── make use-firebase CLIENT=...
-│   ├── make deploy CLIENT=...
-│   └── make create-client CLIENT=...
-├── Firebase
-├── Domínio personalizado
-├── Logo e identidade visual
-├── Adicionando um novo cliente
-└── Fluxo recomendado de deploy
+---
 
+## 📋 Pré-requisitos
 
-# Configuração de um novo cliente
+Instale:
 
-A aplicação utiliza um único repositório para todos os clientes.
+* [Node.js](https://nodejs.org/)
+* Firebase CLI
+* Git
+* Make
 
-Cada cliente possui:
+Verifique:
 
-- Projeto Firebase próprio
-- Web App próprio
-- Firestore próprio
-- Storage próprio
-- Configuração visual própria
-- Logo próprio
-- Domínio próprio (opcional)
+```bash
+node --version
+npm --version
+firebase --version
+make --version
+```
 
-As configurações ficam em:
+Faça login no Firebase CLI:
+
+```bash
+firebase login
+```
+
+---
+
+# 📁 Estrutura
+
+```text
+.
+├── config/
+│   ├── clients/
+│   │   ├── claudio.json
+│   │   └── ...
+│   └── client.js
+│
+├── scripts/
+│   └── create-client.js
+│
+├── firestore.rules
+├── storage.rules
+├── firebase.json
+├── Makefile
+└── README.md
+```
+
+### `config/clients`
+
+Contém as configurações específicas de cada cliente.
+
+Exemplo:
 
 ```text
 config/clients/
 ├── claudio.json
-├── teste.json
+├── victor.json
 └── ...
+```
 
+Os arquivos JSON são **criados automaticamente** pelo comando `make create-client`.
 
-Comandos Make
-Listar clientes
-make clients
+---
 
-Lista todos os clientes configurados em config/clients/.
+# 🔥 Configuração do Firebase
 
-Verificar configuração
-make check CLIENT=claudio
+A criação do projeto Firebase é feita **manualmente pelo Firebase Console**.
 
-Valida se o cliente possui:
+Depois disso, o projeto local automatiza a configuração necessária.
 
-Firebase configurado
-Logo configurado
-Tema configurado
-Domínio (opcional)
-Gerar configuração
-make generate-config CLIENT=claudio
+## 1. Criar o projeto
 
-Gera o arquivo:
-
-config/client.js
-
-a partir da configuração do cliente.
-
-Normalmente não é necessário executar esse comando manualmente, pois ele é executado automaticamente durante o make deploy.
-
-Selecionar Firebase
-make use-firebase CLIENT=claudio
-
-Seleciona o projeto Firebase configurado para o cliente.
-
-Também é executado automaticamente durante o make deploy.
-
-Criar novo cliente
-make create-client CLIENT=novo
-
-Cria automaticamente:
-
-Projeto Google Cloud/Firebase
-Firebase
-Web App
-Arquivo config/clients/novo.json
-
-O script reutiliza o projeto e o Web App caso eles já existam.
-
-Após criar o cliente
-
-A criação do Firestore e Storage é feita manualmente no Firebase Console.
-
-Para o Firestore, utilizar a região:
-
-nam5
-
-Depois, configurar o Storage conforme necessário.
-
-Deploy
-make deploy CLIENT=claudio
-
-O deploy executa automaticamente:
-
-Validação da configuração
-Geração do config/client.js
-Seleção do Firebase
-Deploy do Hosting
-Deploy das Firestore Rules
-Deploy das Storage Rules
-
-Os arquivos de regras são:
-
-firestore.rules
-storage.rules
-
-O firebase.json aponta para esses arquivos.
-
-Exemplo
-make deploy CLIENT=claudio
-
-ou:
-
-make deploy CLIENT=teste
-Estrutura do arquivo de cliente
+No Firebase Console, crie um novo projeto.
 
 Exemplo:
 
-{
-  "id": "claudio",
-  "name": "Despachante Claudio Luz",
-  "domain": "sistema.despclaudioluz.com",
-  "logo": "assets/images/logo-teste.png",
-  "firebase": {
-    "apiKey": "...",
-    "authDomain": "...",
-    "projectId": "...",
-    "storageBucket": "...",
-    "messagingSenderId": "...",
-    "appId": "..."
-  },
-  "theme": {
-    "primary": "#2196F3",
-    "primaryDeep": "#1976D2",
-    "primaryGhost": "#E3F2FD"
-  }
-}
-Domínio
+```text
+Nome do projeto:
+projeto-victor
+```
 
-O domínio é opcional.
-
-Enquanto o cliente não tiver domínio:
-
-"domain": ""
-
-Depois que o domínio estiver configurado:
-
-"domain": "sistema.cliente.com.br"
-Logo e identidade visual
-
-Cada cliente pode possuir sua própria configuração visual.
-
-O logo é definido no arquivo do cliente:
-
-"logo": "assets/images/logo-teste.png"
-
-As cores são definidas em:
-
-"theme": {
-  "primary": "#2196F3",
-  "primaryDeep": "#1976D2",
-  "primaryGhost": "#E3F2FD"
-}
-Fluxo recomendado
-Cliente novo
-make create-client CLIENT=novo
-
-Depois, no Firebase Console:
-
-1. Criar Firestore
-2. Criar Storage
-3. Configurar Authentication
-
-Depois verificar:
-
-make check CLIENT=novo
-
-E publicar:
-
-make deploy CLIENT=novo
-Alteração no sistema
-
-Depois de alterar o código:
-
-make deploy CLIENT=claudio
-
-Para outro cliente:
-
-make deploy CLIENT=teste
-Arquitetura
-
-Cada cliente possui seu próprio projeto Firebase:
-
-                    GitHub
-                      │
-             Código da aplicação
-                      │
-        ┌─────────────┴─────────────┐
-        │                           │
-   Cliente Cláudio             Cliente Teste
-        │                           │
-        ▼                           ▼
- Firebase Cláudio              Firebase Teste
-        │                           │
-   ┌────┼────┐                 ┌────┼────┐
-   │    │    │                 │    │    │
-Hosting Firestore Storage    Hosting Firestore Storage
-
-Isso mantém os dados, autenticação, armazenamento e infraestrutura de cada cliente isolados.
-
-
-
-### Uma pequena correção no seu README atual
-
-
-Seu fluxo atual diz:
-
+Depois da criação, o Firebase fornecerá um **Project ID**:
 
 ```text
-1. Criar configuração
-config/clients/novo.json
+projeto-victor-61cec
+```
 
-Isso ficou desatualizado.
+> O Project ID é utilizado apenas no momento da criação da configuração do cliente.
 
-Agora o correto é:
+---
 
-make create-client CLIENT=novo
+# 👤 Criando um novo cliente
+
+Depois de criar o projeto no Firebase Console, execute:
+
+```bash
+make create-client CLIENT=victor PROJECT_ID=projeto-victor-61cec
+```
+
+O comando irá:
+
+1. Verificar se o projeto Firebase existe.
+2. Verificar se existe um Web App.
+3. Criar o Web App caso ele não exista.
+4. Obter automaticamente a configuração do Firebase.
+5. Criar o arquivo:
+
+```text
+config/clients/victor.json
+```
+
+A configuração do projeto passa a ficar armazenada nesse arquivo.
+
+### Importante
+
+O `PROJECT_ID` **só precisa ser informado nesse momento**.
+
+Depois disso, não é necessário informar novamente.
+
+---
+
+# ⚙️ Configuração manual do Firebase
+
+Depois de criar o cliente, configure os serviços necessários pelo Firebase Console.
+
+## Firestore
+
+Acesse:
+
+```text
+Firestore Database
+        ↓
+Criar banco de dados
+```
+
+Escolha a localização desejada.
+
+## Storage
+
+Acesse:
+
+```text
+Storage
+    ↓
+Começar
+```
+
+Configure o bucket.
+
+## Authentication
+
+Acesse:
+
+```text
+Authentication
+        ↓
+Configurar método de login
+```
+
+Habilite os provedores utilizados pela aplicação.
+
+---
+
+# 🛠️ Comandos do Makefile
+
+## Listar clientes
+
+```bash
+make clients
+```
+
+Exemplo:
+
+```text
+Clientes disponíveis:
+  - claudio
+  - victor
+```
+
+---
+
+## Criar cliente
+
+Utilizado **uma única vez por cliente**:
+
+```bash
+make create-client CLIENT=victor PROJECT_ID=projeto-victor-61cec
+```
+
+Esse comando cria automaticamente:
+
+```text
+config/clients/victor.json
+```
+
+---
+
+## Verificar configuração
+
+Depois que o cliente já foi criado:
+
+```bash
+make check CLIENT=victor
+```
+
+O comando verifica:
+
+* existência do arquivo do cliente;
+* Firebase `projectId`;
+* Firebase `apiKey`;
+* Firebase `appId`;
+* logo;
+* tema.
+
+O `PROJECT_ID` não precisa ser informado.
+
+---
+
+## Gerar configuração
+
+```bash
+make generate-config CLIENT=victor
+```
+
+Esse comando gera:
+
+```text
+config/client.js
+```
+
+a partir de:
+
+```text
+config/clients/victor.json
+```
+
+---
+
+# 🚀 Deploy
+
+Para publicar um cliente:
+
+```bash
+make deploy CLIENT=victor
+```
+
+O comando automaticamente:
+
+1. Valida a configuração.
+2. Gera `config/client.js`.
+3. Obtém o `projectId` do JSON do cliente.
+4. Executa o deploy no projeto Firebase correto.
+
+São publicados:
+
+* Firebase Hosting
+* Firestore Rules
+* Storage Rules
+
+As regras utilizadas são:
+
+```text
+firestore.rules
+storage.rules
+```
+
+### Não é necessário informar o Project ID
+
+Depois que o cliente foi criado:
+
+```bash
+make deploy CLIENT=victor
+```
+
+é suficiente.
+
+O fluxo é:
+
+```text
+CLIENT=victor
+      ↓
+config/clients/victor.json
+      ↓
+firebase.projectId
+      ↓
+projeto-victor-61cec
+      ↓
+Firebase Deploy
+```
+
+Isso evita o risco de informar manualmente um projeto Firebase incorreto.
+
+---
+
+# 🔄 Fluxo completo para um novo cliente
+
+## 1. Criar projeto no Firebase Console
+
+Exemplo:
+
+```text
+Nome:
+Projeto Victor
+
+Project ID:
+projeto-victor-61cec
+```
+
+## 2. Criar automaticamente a configuração
+
+```bash
+make create-client CLIENT=victor PROJECT_ID=projeto-victor-61cec
+```
+
+## 3. Configurar os serviços do Firebase
+
+No Firebase Console:
+
+```text
+Firestore
+Storage
+Authentication
+```
+
+## 4. Validar
+
+```bash
+make check CLIENT=victor
+```
+
+## 5. Fazer deploy
+
+```bash
+make deploy CLIENT=victor
+```
+
+Pronto.
+
+---
+
+# 💻 Desenvolvimento local
+
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Execute a aplicação utilizando o comando definido no `package.json`.
+
+Por exemplo:
+
+```bash
+npm run dev
+```
+
+---
+
+# 🔐 Boas práticas
+
+## Configurações do Firebase
+
+As configurações públicas do Firebase Web App, como:
+
+```text
+apiKey
+authDomain
+projectId
+storageBucket
+messagingSenderId
+appId
+```
+
+podem fazer parte da configuração do frontend.
+
+A segurança dos dados deve ser garantida através das:
+
+* Firebase Security Rules
+* Authentication
+* permissões do Firebase/Google Cloud
+
+## Nunca versionar credenciais privadas
+
+Não coloque no Git:
+
+* Senhas
+* Tokens privados
+* Chaves privadas
+* Service Account JSON
+* Credenciais administrativas
+
+---
+
+# 🌳 Git
+
+Depois de criar ou alterar a configuração de um cliente:
+
+```bash
+git status
+```
+
+Adicione os arquivos:
+
+```bash
+git add .
+```
+
+Faça o commit:
+
+```bash
+git commit -m "feat: add victor client"
+```
+
+Envie para o repositório:
+
+```bash
+git push
+```
+
+---
+
+# 📌 Comandos rápidos
+
+### Listar clientes
+
+```bash
+make clients
+```
+
+### Criar novo cliente
+
+```bash
+make create-client CLIENT=victor PROJECT_ID=projeto-victor-61cec
+```
+
+### Validar cliente
+
+```bash
+make check CLIENT=victor
+```
+
+### Gerar configuração
+
+```bash
+make generate-config CLIENT=victor
+```
+
+### Fazer deploy
+
+```bash
+make deploy CLIENT=victor
+```
+
+---
+
+# 🏗️ Arquitetura Multi-Cliente
+
+A aplicação utiliza um único código-fonte para todos os clientes.
+
+```text
+                       ┌─────────────────────┐
+                       │  Código da aplicação │
+                       └──────────┬──────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+             Cliente Claudio              Cliente Victor
+                    │                           │
+                    ▼                           ▼
+          claudio.json                  victor.json
+                    │                           │
+                    ▼                           ▼
+           Firebase Claudio              Firebase Victor
+```
+
+Cada cliente possui:
+
+* seu próprio projeto Firebase;
+* seu próprio Web App;
+* sua própria configuração;
+* seus próprios dados.
+
+Enquanto isso, o código da aplicação, `firestore.rules`, `storage.rules` e demais configurações compartilhadas permanecem centralizados neste repositório.
+
+---
+
+# 🚀 Resumo do fluxo
+
+```text
+┌─────────────────────────────┐
+│ 1. Criar projeto Firebase   │
+│    manualmente no Console   │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ 2. make create-client       │
+│    CLIENT=victor             │
+│    PROJECT_ID=...            │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ 3. Configurar Firestore,    │
+│    Storage e Authentication │
+│    no Firebase Console      │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ 4. make deploy              │
+│    CLIENT=victor             │
+└──────────────┬──────────────┘
+               │
+               ▼
+       🎉 Cliente publicado
+```

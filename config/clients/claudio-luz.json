@@ -1,4 +1,4 @@
-const clientConfig = {
+{
   "id": "claudio-luz",
   "name": "Despachante claudio-luz",
   "domain": "sistema.despclaudioluz.com",
@@ -19,6 +19,4 @@ const clientConfig = {
     "primaryDeep": "#DE6B26",
     "primaryGhost": "#FFEDD3"
   }
-};
-
-export default clientConfig;
+}

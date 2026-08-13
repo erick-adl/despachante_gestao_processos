@@ -2,13 +2,14 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 
 const client = process.argv[2];
+const projectId = process.argv[3];
 
-if (!client) {
-    console.error('Uso: node scripts/create-client.js <cliente>');
+if (!client || !projectId) {
+    console.error(
+        'Uso: make create-client CLIENT=victor PROJECT_ID=projeto-victor-61cec'
+    );
     process.exit(1);
 }
-
-const projectId = `despachante-${client}`;
 
 function run(command) {
     console.log(`> ${command}`);
@@ -19,100 +20,35 @@ function run(command) {
     }).trim();
 }
 
-function commandSucceeds(command) {
-    try {
-        execSync(command, {
-            stdio: 'ignore'
-        });
-
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-console.log(`\nCriando/configurando cliente: ${client}`);
+console.log(`\nConfigurando cliente: ${client}`);
 console.log(`Projeto Firebase: ${projectId}\n`);
 
 // ---------------------------------------------------------
-// 1. Verificar se o projeto já existe
+// 1. Verificar se o projeto existe
 // ---------------------------------------------------------
 
-let firebaseProjectExists = false;
+console.log('Verificando projeto Firebase...');
 
-try {
-    const projectsJson = run('firebase projects:list --json');
-    const projectsData = JSON.parse(projectsJson);
+const projectsJson = run('firebase projects:list --json');
+const projectsData = JSON.parse(projectsJson);
 
-    firebaseProjectExists = projectsData.result?.some(
-        project => project.projectId === projectId
-    ) ?? false;
-} catch {
-    firebaseProjectExists = false;
-}
-
-// ---------------------------------------------------------
-// 2. Criar projeto se necessário
-// ---------------------------------------------------------
-
-if (!firebaseProjectExists) {
-    console.log(`\nProjeto ${projectId} não encontrado.`);
-
-    try {
-        run(
-            `firebase projects:create ${projectId} --display-name="Despachante ${client}"`
-        );
-
-        firebaseProjectExists = true;
-    } catch {
-        console.log(
-            '\nA criação do projeto falhou. Verificando se ele foi criado parcialmente...'
-        );
-
-        // Caso o projeto Google Cloud tenha sido criado, mas
-        // o Firebase não tenha sido adicionado, tentamos adicionar.
-        try {
-            run(`firebase projects:addfirebase`);
-
-            firebaseProjectExists = true;
-        } catch {
-            throw new Error(
-                `Não foi possível criar/configurar o projeto ${projectId}.`
-            );
-        }
-    }
-} else {
-    console.log(`\nProjeto ${projectId} já existe. Reutilizando.`);
-}
-
-// ---------------------------------------------------------
-// 3. Selecionar projeto
-// ---------------------------------------------------------
-
-run(`firebase use ${projectId}`);
-
-// ---------------------------------------------------------
-// 4. Habilitar APIs necessárias
-// ---------------------------------------------------------
-
-console.log('\nHabilitando Cloud Firestore API...');
-
-run(
-    `gcloud services enable firestore.googleapis.com --project=${projectId}`
+const projectExists = projectsData.result?.some(
+    project => project.projectId === projectId
 );
 
-console.log('Cloud Firestore API habilitada.');
+if (!projectExists) {
+    throw new Error(
+        `O projeto Firebase "${projectId}" não foi encontrado.`
+    );
+}
 
+console.log(`Projeto ${projectId} encontrado.`);
 
 // ---------------------------------------------------------
-// 5. Configurar regras do Firestore
+// 2. Verificar/Criar Web App
 // ---------------------------------------------------------
 
-
-
-// ---------------------------------------------------------
-// 6. Verificar/Criar Web App
-// ---------------------------------------------------------
+console.log('\nVerificando Web App...');
 
 const appsJson = run(
     `firebase apps:list --project ${projectId} --json`
@@ -125,7 +61,7 @@ let webApp = appsData.result?.find(
 );
 
 if (!webApp) {
-    console.log('\nWeb App não encontrado. Criando...');
+    console.log('Web App não encontrado. Criando...');
 
     run(
         `firebase apps:create web "Despachante ${client}" --project ${projectId}`
@@ -141,7 +77,7 @@ if (!webApp) {
         app => app.platform === 'WEB'
     );
 } else {
-    console.log(`\nWeb App já existe: ${webApp.appId}`);
+    console.log(`Web App já existe: ${webApp.appId}`);
 }
 
 if (!webApp) {
@@ -149,7 +85,7 @@ if (!webApp) {
 }
 
 // ---------------------------------------------------------
-// 7. Obter configuração do Firebase
+// 3. Obter configuração do Firebase
 // ---------------------------------------------------------
 
 console.log('\nObtendo configuração do Firebase...');
@@ -163,7 +99,15 @@ const sdkData = JSON.parse(sdkConfigJson);
 const firebaseConfig = sdkData.result.sdkConfig;
 
 // ---------------------------------------------------------
-// 8. Criar/Atualizar configuração do cliente
+// 4. Criar diretório de clientes
+// ---------------------------------------------------------
+
+fs.mkdirSync('config/clients', {
+    recursive: true
+});
+
+// ---------------------------------------------------------
+// 5. Criar configuração do cliente
 // ---------------------------------------------------------
 
 const clientConfig = {
@@ -188,7 +132,7 @@ fs.writeFileSync(
     JSON.stringify(clientConfig, null, 2) + '\n'
 );
 
-console.log(`\nArquivo criado/atualizado: ${output}`);
+console.log(`\nArquivo criado: ${output}`);
 
 console.log('\n========================================');
 console.log('Cliente configurado com sucesso!');
