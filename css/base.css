@@ -1465,4 +1465,28 @@
      .main {
          padding: 18px;
      }
+
+
+ }
+
+ #f_cpf.field-invalid {
+     border-color: #e05252;
+ }
+
+ #f_cpf.field-valid {
+     border-color: #4caf78;
+ }
+
+ .cpf-validation {
+     min-height: 18px;
+     margin-top: 5px;
+     font-size: 12px;
+ }
+
+ .cpf-validation.invalid {
+     color: #e05252;
+ }
+
+ .cpf-validation.valid {
+     color: #4caf78;
  }

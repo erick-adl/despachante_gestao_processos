@@ -10,7 +10,8 @@ import {
     todayISO,
     uid,
     normalize,
-    onlyDigits
+    onlyDigits,
+    isValidCPF
 } from '../core/utils.js';
 
 import {
@@ -133,7 +134,15 @@ export function openClientForm(clientId) {
         <div class="field-row">
           <div class="field">
             <label>CPF</label>
-            <input id="f_cpf" class="mono" value="${c ? escapeHtml(c.cpf || '') : ''}" placeholder="000.000.000-00" oninput="this.value=maskCPF(this.value)" maxlength="14">
+            <input
+                id="f_cpf"
+                class="mono"
+                value="${c ? escapeHtml(c.cpf || '') : ''}"
+                placeholder="000.000.000-00"
+                oninput="this.value=maskCPF(this.value); validateCPFField(this)"
+                maxlength="14"
+            >
+            <div id="cpfValidationMessage" class="cpf-validation"></div>
           </div>
           <div class="field">
             <label>Telefone</label>
@@ -163,15 +172,34 @@ export function openClientForm(clientId) {
       </div>
     </div>`;
     document.body.appendChild(overlay);
-    setTimeout(() => document.getElementById('f_nome').focus(), 50);
+    setTimeout(() => {
+        document.getElementById('f_nome').focus();
+
+        const cpfInput = document.getElementById('f_cpf');
+
+        if (cpfInput && onlyDigits(cpfInput.value).length === 11) {
+            validateCPFField(cpfInput);
+        }
+    }, 50);
 }
 
 export async function submitClientForm(existingId) {
     const nome = document.getElementById('f_nome').value.trim();
-    if (!nome) { showToast('Informe o nome do cliente.', true); return; }
+    const cpf = document.getElementById('f_cpf').value.trim();
+
+    if (!nome) {
+        showToast('Informe o nome do cliente.', true);
+        return;
+    }
+
+    if (!isValidCPF(cpf)) {
+        showToast('Informe um CPF válido.', true);
+        document.getElementById('f_cpf').focus();
+        return;
+    }
     const payload = {
         nome,
-        cpf: document.getElementById('f_cpf').value.trim(),
+        cpf,
         telefone: document.getElementById('f_telefone').value.trim(),
         cnh: document.getElementById('f_cnh').value.trim(),
         endereco: document.getElementById('f_endereco').value.trim(),
@@ -374,3 +402,36 @@ async function clientesTableHtml() {
 export function resetClientesListQuery() {
     CLIENTES_LIST_QUERY = '';
 }
+
+export function validateCPFField(input) {
+    const cpf = onlyDigits(input.value);
+    const message = document.getElementById('cpfValidationMessage');
+
+    input.classList.remove('field-valid', 'field-invalid');
+
+    if (message) {
+        message.textContent = '';
+        message.className = 'cpf-validation';
+    }
+
+    // Ainda não completou o CPF
+    if (cpf.length < 11) {
+        return;
+    }
+
+    const valid = isValidCPF(cpf);
+
+    input.classList.add(valid ? 'field-valid' : 'field-invalid');
+
+    if (message) {
+        message.textContent = valid
+            ? 'CPF válido.'
+            : 'CPF inválido.';
+
+        message.className = valid
+            ? 'cpf-validation valid'
+            : 'cpf-validation invalid';
+    }
+}
+
+window.validateCPFField = validateCPFField;
