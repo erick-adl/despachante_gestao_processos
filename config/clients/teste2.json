@@ -1,0 +1,21 @@
+{
+  "id": "teste2",
+  "name": "Despachante teste2",
+  "domain": "",
+  "logo": "assets/images/logo-teste2.png",
+  "firebase": {
+    "projectId": "despachante-teste2",
+    "appId": "1:792738802978:web:2f1df587ca7d86057f497b",
+    "storageBucket": "despachante-teste2.firebasestorage.app",
+    "apiKey": "AIzaSyBX-4XTwPsYM9rQVp9kxX8tvbJAr9Q5NB0",
+    "authDomain": "despachante-teste2.firebaseapp.com",
+    "messagingSenderId": "792738802978",
+    "projectNumber": "792738802978",
+    "version": "2"
+  },
+  "theme": {
+    "primary": "#2196F3",
+    "primaryDeep": "#1976D2",
+    "primaryGhost": "#E3F2FD"
+  }
+}

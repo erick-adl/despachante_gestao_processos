@@ -37,4 +37,8 @@ use-firebase: generate-config
 
 deploy: check use-firebase
 	@echo "Deploy do cliente: $(CLIENT)"
-	firebase deploy --only hosting
+	firebase deploy --only hosting firestore:rules storage
+
+create-client:
+	@node scripts/create-client.js $(CLIENT)
+
