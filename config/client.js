@@ -1,0 +1,22 @@
+const clientConfig = {
+  "id": "claudio",
+  "name": "Despachante Cláudio Luz",
+  "logo": "assets/images/logo-claudio.png",
+  "domain": "sistema.despclaudioluz.com",
+  "firebase": {
+    "apiKey": "AIzaSyB3p_q3rpy2MmFx4BYUmUUlpQwTmWAZ7_c",
+    "authDomain": "projeto-victor-61cec.firebaseapp.com",
+    "projectId": "projeto-victor-61cec",
+    "storageBucket": "projeto-victor-61cec.firebasestorage.app",
+    "messagingSenderId": "592034080425",
+    "appId": "1:592034080425:web:0caf918f843d556194abb8",
+    "measurementId": "G-1ZVLRWRF73"
+  },
+  "theme": {
+    "primary": "#FF914C",
+    "primaryDeep": "#DE6B26",
+    "primaryGhost": "#FFEDD3"
+  }
+};
+
+export default clientConfig;

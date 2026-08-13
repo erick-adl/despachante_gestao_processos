@@ -73,6 +73,8 @@ import {
   getAgenda
 } from './core/firestore.js';
 
+import { applyTheme } from './core/theme.js';
+
 
 let currentUser = null;
 window.getCurrentUser = () => currentUser;
@@ -108,6 +110,8 @@ async function loadData() {
    ROUTER / RENDER
    ============================================================ */
 
+applyTheme();
+render();
 async function render() {
   const mainEl = document.getElementById('mainEl');
 
