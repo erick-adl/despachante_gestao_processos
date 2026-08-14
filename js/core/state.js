@@ -27,5 +27,6 @@ export const state = {
     CURRENT_TIPOS: [],
     CURRENT_COBRANCAS: [],
     CURRENT_ANEXOS: [],
-    REMOVED_ANEXO_KEYS: []
+    REMOVED_ANEXO_KEYS: [],
+    SAVING_SERVICE: false,
 };

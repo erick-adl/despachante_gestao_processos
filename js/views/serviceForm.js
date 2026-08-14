@@ -39,9 +39,9 @@ function tiposArray(val) {
 
 export async function openServiceForm(clienteId, servicoId) {
     const c = state.DATA.clientes.find(x => x.id === clienteId);
-    const s = servicoId
-        ? await getService(clienteId, servicoId)
-        : null;
+    const s = servicoId ?
+        await getService(clienteId, servicoId) :
+        null;
     const isEdit = !!s;
     state.CURRENT_INFRACOES = (s && s.infracoes) ? s.infracoes.map(x => Object.assign({}, x)) : [];
     state.CURRENT_TIPOS = tiposArray(s ? s.tipoServico : null);
@@ -140,11 +140,13 @@ export async function openServiceForm(clienteId, servicoId) {
       </div>
       <div class="form-modal-foot">
         <button class="btn btn-ghost" onclick="closeModal('serviceFormOverlay')">Cancelar</button>
-        <button class="btn btn-primary" onclick="submitServiceForm('${clienteId}','${isEdit ? s.id : ''}')">${icon('check')} ${isEdit ? 'Salvar alterações' : 'Adicionar serviço'}</button>
-      </div>
+        <button id="serviceSubmitBtn" class="btn btn-primary" onclick="submitServiceForm('${clienteId}','${isEdit ? s.id : ''}')">
+    ${icon('check')} ${isEdit ? 'Salvar alterações' : 'Adicionar serviço'}
+</button>      </div>
     </div>`;
     document.body.appendChild(overlay);
 }
+
 function tiposChecklistHtml() {
     return state.DATA.tiposServico.map(t => {
         const checked = state.CURRENT_TIPOS.includes(t);
@@ -154,7 +156,8 @@ function tiposChecklistHtml() {
 export function toggleTipoFromEl(el) {
     const t = el.dataset.tipo;
     const idx = state.CURRENT_TIPOS.indexOf(t);
-    if (idx >= 0) state.CURRENT_TIPOS.splice(idx, 1); else state.CURRENT_TIPOS.push(t);
+    if (idx >= 0) state.CURRENT_TIPOS.splice(idx, 1);
+    else state.CURRENT_TIPOS.push(t);
     document.getElementById('tiposChecklist').innerHTML = tiposChecklistHtml();
     const sec = document.getElementById('infracoesSection');
     if (sec) sec.style.display = state.CURRENT_TIPOS.includes(TIPO_MULTA) ? 'block' : 'none';
@@ -203,6 +206,7 @@ export function openManageTipos() {
     </div>`;
     document.body.appendChild(overlay);
 }
+
 function tiposManageListHtml() {
     return state.DATA.tiposServico.map((t) => {
         const locked = t === TIPO_MULTA;
@@ -372,82 +376,160 @@ export function removeCurrentAnexo(id) {
 }
 
 export async function submitServiceForm(clienteId, existingId) {
-    const c = state.DATA.clientes.find(x => x.id === clienteId);
-    const data = document.getElementById('s_data').value || todayISO();
-    if (state.CURRENT_TIPOS.length === 0) { showToast('Selecione ao menos um tipo de serviço.', true); return; }
-    const infracoesValidas = state.CURRENT_INFRACOES.filter(i => (i.numeroAuto || '').trim() || (i.orgaoAutuador || '').trim() || (i.tipoInfracao || '').trim());
-    const cobrancasValidas = state.CURRENT_COBRANCAS.filter(cb => (cb.nome || '').trim() || (cb.valor !== '' && cb.valor != null));
-    const payload = {
-        data,
-        placa: document.getElementById('s_placa').value.trim().toUpperCase(),
-        renavam: document.getElementById('s_renavam').value.trim(),
-        cnh: document.getElementById('s_cnh').value.trim(),
-        marca: document.getElementById('s_marca').value.trim(),
-        tipoServico: state.CURRENT_TIPOS.slice(),
-        cobrancas: cobrancasValidas,
-        lucro: parseFloat(document.getElementById('s_lucro').value) || 0,
-        observacoes: document.getElementById('s_observacoes').value.trim(),
-        infracoes: state.CURRENT_TIPOS.includes(TIPO_MULTA) ? infracoesValidas : [],
-    };
-    let servicoId = existingId;
-    let sObj;
-    if (existingId) {
-        sObj = await getService(clienteId, existingId);
+    if (state.SAVING_SERVICE) {
+        return;
+    }
 
-        if (!sObj) {
-            showToast('Serviço não encontrado.', true);
+    state.SAVING_SERVICE = true;
+
+    const submitBtn = document.getElementById('serviceSubmitBtn');
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Salvando...';
+    }
+
+    try {
+        const c = state.DATA.clientes.find(x => x.id === clienteId);
+        const data = document.getElementById('s_data').value || todayISO();
+
+        if (state.CURRENT_TIPOS.length === 0) {
+            showToast('Selecione ao menos um tipo de serviço.', true);
             return;
         }
 
-        Object.assign(sObj, payload);
-    } else {
-        servicoId = uid();
-
-        sObj = Object.assign(
-            { id: servicoId },
-            payload
+        const infracoesValidas = state.CURRENT_INFRACOES.filter(
+            i =>
+                (i.numeroAuto || '').trim() ||
+                (i.orgaoAutuador || '').trim() ||
+                (i.tipoInfracao || '').trim()
         );
-    }
-    const anexosFinal = [];
-    for (const a of state.CURRENT_ANEXOS) {
-        if (a.status === 'new') {
-            const key = 'servicos/' + clienteId + '/' + servicoId + '/' + a.id;
 
-            const uploaded = await saveAnexoFile(
-                key,
-                a.nome,
-                a.base64,
-                a.mime
-            );
-            anexosFinal.push({
-                id: a.id,
-                nome: a.nome,
-                mime: a.mime,
-                key,
-                url: uploaded
-            });
+        const cobrancasValidas = state.CURRENT_COBRANCAS.filter(
+            cb =>
+                (cb.nome || '').trim() ||
+                (cb.valor !== '' && cb.valor != null)
+        );
+
+        const payload = {
+            data,
+            placa: document.getElementById('s_placa').value.trim().toUpperCase(),
+            renavam: document.getElementById('s_renavam').value.trim(),
+            cnh: document.getElementById('s_cnh').value.trim(),
+            marca: document.getElementById('s_marca').value.trim(),
+            tipoServico: state.CURRENT_TIPOS.slice(),
+            cobrancas: cobrancasValidas,
+            lucro: parseFloat(document.getElementById('s_lucro').value) || 0,
+            infracoes: state.CURRENT_TIPOS.includes(TIPO_MULTA)
+                ? infracoesValidas
+                : [],
+        };
+
+        let servicoId = existingId;
+        let sObj;
+
+        if (!c.servicos) {
+            c.servicos = [];
+        }
+
+        if (existingId) {
+            sObj = await getService(clienteId, existingId);
+
+            if (!sObj) {
+                showToast('Serviço não encontrado.', true);
+                return;
+            }
+
+            Object.assign(sObj, payload);
         } else {
-            anexosFinal.push({
-                id: a.id,
-                nome: a.nome,
-                mime: a.mime,
-                key: a.key,
-                url: a.url
-            });
+            servicoId = uid();
+
+            sObj = {
+                id: servicoId,
+                ...payload
+            };
+        }
+
+        const anexosFinal = [];
+
+        for (const a of state.CURRENT_ANEXOS) {
+            if (a.status === 'new') {
+                const key =
+                    'anexo:' +
+                    servicoId +
+                    ':' +
+                    a.id;
+
+                await saveAnexoFile(
+                    key,
+                    a.nome,
+                    a.base64,
+                    a.mime
+                );
+
+                anexosFinal.push({
+                    id: a.id,
+                    nome: a.nome,
+                    mime: a.mime,
+                    key
+                });
+            } else {
+                anexosFinal.push({
+                    id: a.id,
+                    nome: a.nome,
+                    mime: a.mime,
+                    key: a.key
+                });
+            }
+        }
+
+        for (const key of state.REMOVED_ANEXO_KEYS) {
+            await deleteAnexoFile(key);
+        }
+
+        sObj.anexos = anexosFinal;
+
+        delete sObj.anexoNome;
+
+        console.log('Salvando serviço:', {
+            clienteId,
+            servicoId,
+            service: sObj
+        });
+
+        await saveService(clienteId, sObj);
+
+        closeModal('serviceFormOverlay');
+
+        showToast(
+            existingId
+                ? 'Serviço atualizado.'
+                : 'Serviço adicionado.'
+        );
+
+        go('clienteDetalhe', {
+            id: clienteId
+        });
+
+    } catch (error) {
+        console.error('Erro ao salvar serviço:', error);
+
+        showToast(
+            'Não foi possível salvar o serviço.',
+            true
+        );
+
+    } finally {
+        state.SAVING_SERVICE = false;
+
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML =
+                `${icon('check')} ${existingId ? 'Salvar alterações' : 'Adicionar serviço'}`;
         }
     }
-    for (const key of state.REMOVED_ANEXO_KEYS) { await deleteAnexoFile(key); }
-    sObj.anexos = anexosFinal;
-    delete sObj.anexoNome;
-
-    await saveService(
-        clienteId,
-        sObj
-    );
-    closeModal('serviceFormOverlay');
-    showToast(existingId ? 'Serviço atualizado.' : 'Serviço adicionado.');
-    go('clienteDetalhe', { id: clienteId });
 }
+
 export function confirmDeleteService(clienteId, servicoId) {
     showConfirm(
         'Excluir este serviço? Esta ação não pode ser desfeita.',
