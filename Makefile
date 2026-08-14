@@ -57,3 +57,11 @@ create-client:
 		exit 1)
 
 	@node scripts/create-client.js "$(CLIENT)" "$(PROJECT_ID)"
+
+dev: generate-config
+	@echo ""
+	@echo "🚀 Ambiente preparado para desenvolvimento"
+	@echo "👤 Cliente: $(CLIENT)"
+	@echo "🔥 Firebase: $$(node -e "console.log(require('./$(CONFIG_FILE)').firebase.projectId)")"
+	@echo ""
+	@echo "Agora abra o projeto pelo Live Server do VS Code."
