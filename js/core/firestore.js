@@ -5,7 +5,8 @@ import {
     setDoc,
     collection,
     getDocs,
-    deleteDoc
+    deleteDoc,
+    runTransaction
 } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js';
 
 import { firebaseApp } from './firebase.js';
@@ -233,4 +234,48 @@ export async function deleteAgenda(itemId) {
     );
 
     await deleteDoc(agendaRef);
+}
+
+export async function createClientWithCode(client) {
+    const counterRef = doc(
+        db,
+        'configuracoes',
+        'contadorClientes'
+    );
+
+    let codigo;
+
+    await runTransaction(db, async transaction => {
+        const counterSnapshot = await transaction.get(counterRef);
+
+        const ultimoCodigo = counterSnapshot.exists()
+            ? Number(counterSnapshot.data().ultimoCodigo) || 0
+            : 0;
+
+        codigo = ultimoCodigo + 1;
+
+        transaction.set(
+            counterRef,
+            {
+                ultimoCodigo: codigo
+            },
+            { merge: true }
+        );
+    });
+
+    const clientRef = doc(
+        db,
+        'clientes',
+        client.id
+    );
+
+    await setDoc(
+        clientRef,
+        cleanData({
+            ...client,
+            codigo
+        })
+    );
+
+    return codigo;
 }

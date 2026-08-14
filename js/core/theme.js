@@ -22,4 +22,10 @@ export function applyTheme() {
             img.src = clientConfig.logo;
         });
     }
+
+    const favicon = document.getElementById('favicon');
+
+    if (favicon && clientConfig.logo) {
+        favicon.href = clientConfig.logo;
+    }
 }

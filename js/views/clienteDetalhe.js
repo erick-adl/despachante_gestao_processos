@@ -1,9 +1,9 @@
 import { state } from '../core/state.js';
 
 import {
-  escapeHtml,
-  fmtMoney,
-  fmtDateShort
+    escapeHtml,
+    fmtMoney,
+    fmtDateShort
 } from '../core/utils.js';
 
 import { icon } from '../core/icons.js';
@@ -14,42 +14,48 @@ import { showToast } from '../components/toast.js';
 import { showConfirm } from '../components/confirm.js';
 
 import {
-  sumLucro,
-  tiposArray
+    sumLucro,
+    tiposArray
 } from '../core/data.js';
 
 import {
-  deleteAnexoFile
+    deleteAnexoFile
 } from '../core/storage.js';
 
 import { renderPlateChip } from '../core/utils.js';
 import { emptyState } from '../components/emptyState.js';
 import {
-  deleteClient,
-  getServices,
-  deleteService
+    deleteClient,
+    getServices,
+    deleteService
 } from '../core/firestore.js';
 
 
 
 
 export async function viewClienteDetalhe(id) {
-  const c = state.DATA.clientes.find(x => x.id === id);
-  if (!c) {
-    return `<div class="view">${emptyState('users', 'Cliente não encontrado', 'Volte para a lista de clientes.')}</div>`;
-  }
+    const c = state.DATA.clientes.find(x => x.id === id);
+    if (!c) {
+        return `<div class="view">${emptyState('users', 'Cliente não encontrado', 'Volte para a lista de clientes.')}</div>`;
+    }
 
-  const servicos = (await getServices(id))
-    .slice()
-    .sort((a, b) => b.data.localeCompare(a.data));
-  const totalLucro = sumLucro(servicos);
-  return `
+    const servicos = (await getServices(id))
+        .slice()
+        .sort((a, b) => b.data.localeCompare(a.data));
+    const totalLucro = sumLucro(servicos);
+    return `
   <div class="view">
     <div class="breadcrumb"><b onclick="go('clientes')">Clientes</b> / ${escapeHtml(c.nome)}</div>
     <div class="client-hero">
       <div>
         <h2>${escapeHtml(c.nome)}</h2>
         <div class="meta-row">
+          <div class="meta-item">
+        <span>Código</span>
+        <b class="mono">
+            ${c.codigo ? String(c.codigo).padStart(6, '0') : '—'}
+        </b>
+        </div>
           <div class="meta-item"><span>CPF</span><b class="mono">${escapeHtml(c.cpf || '—')}</b></div>
           <div class="meta-item"><span>Telefone</span><b class="mono">${escapeHtml(c.telefone || '—')}</b></div>
           <div class="meta-item"><span>CNH</span><b class="mono">${escapeHtml(c.cnh || '—')}</b></div>

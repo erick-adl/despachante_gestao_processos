@@ -1,5 +1,6 @@
 import {
     saveClient,
+    createClientWithCode,
     getServices
 } from '../core/firestore.js';
 import { state } from '../core/state.js';
@@ -11,7 +12,8 @@ import {
     uid,
     normalize,
     onlyDigits,
-    isValidCPF
+    isValidCPF,
+    formatName
 } from '../core/utils.js';
 
 import {
@@ -51,7 +53,7 @@ export async function viewClientesList() {
                 <div class="field" style="margin-bottom:16px;">
                     <input
                         type="text"
-                        placeholder="Buscar por nome, CPF, telefone ou placa..."
+                        placeholder="Buscar por código, nome, CPF, telefone ou placa..."
                         value="${escapeHtml(CLIENTES_LIST_QUERY)}"
                         oninput="onClientesSearchInput(this.value)"
                     >
@@ -127,6 +129,16 @@ export function openClientForm(clientId) {
         <button class="icon-btn" onclick="closeModal('clientFormOverlay')">${icon('x')}</button>
       </div>
       <div class="form-modal-body">
+       ${isEdit && c.codigo ? `
+        <div class="field">
+        <label>Código do cliente</label>
+        <input
+            class="mono"
+            value="${String(c.codigo).padStart(6, '0')}"
+            readonly
+        >
+        </div>
+    ` : ''}
         <div class="field">
           <label>Nome completo</label>
           <input id="f_nome" value="${c ? escapeHtml(c.nome) : ''}" placeholder="Ex: João da Silva">
@@ -184,7 +196,7 @@ export function openClientForm(clientId) {
 }
 
 export async function submitClientForm(existingId) {
-    const nome = document.getElementById('f_nome').value.trim();
+    const nome = formatName(document.getElementById('f_nome').value);
     const cpf = document.getElementById('f_cpf').value.trim();
 
     if (!nome) {
@@ -206,13 +218,19 @@ export async function submitClientForm(existingId) {
     };
     let clientId = existingId;
     let clientObj;
+
     if (existingId) {
         clientObj = state.DATA.clientes.find(x => x.id === existingId);
+
         Object.assign(clientObj, payload);
     } else {
         clientId = uid();
-        clientObj = Object.assign({ id: clientId, criadoEm: todayISO() }, payload);
-        state.DATA.clientes.push(clientObj);
+
+        clientObj = {
+            id: clientId,
+            criadoEm: todayISO(),
+            ...payload
+        };
     }
     const docsFinal = [];
     for (const a of state.CURRENT_CLIENT_ANEXOS) {
@@ -246,9 +264,16 @@ export async function submitClientForm(existingId) {
     for (const key of state.REMOVED_CLIENT_ANEXO_KEYS) { await deleteAnexoFile(key); }
     clientObj.documentos = docsFinal;
     delete clientObj.documentoIdentificacao;
-    await saveClient(
-        clientObj
-    );
+
+    if (existingId) {
+        await saveClient(clientObj);
+    } else {
+        const codigo = await createClientWithCode(clientObj);
+
+        clientObj.codigo = codigo;
+
+        state.DATA.clientes.push(clientObj);
+    }
     closeModal('clientFormOverlay');
     showToast(existingId ? 'Cliente atualizado.' : 'Cliente cadastrado. Agora adicione um serviço, se desejar.');
     go('clienteDetalhe', { id: clientId });
@@ -304,6 +329,7 @@ async function clientesTableHtml() {
             const nome = normalize(c.nome);
             const cpf = onlyDigits(c.cpf);
             const telefone = onlyDigits(c.telefone);
+            const codigo = String(c.codigo || '').padStart(6, '0');
 
             const placaMatch = c.servicosCarregados.some(s =>
                 normalize(s.placa)
@@ -316,6 +342,7 @@ async function clientesTableHtml() {
                 nome.includes(q) ||
                 (qDigits && cpf.includes(qDigits)) ||
                 (qDigits && telefone.includes(qDigits)) ||
+                (qDigits && codigo.includes(qDigits)) || 
                 placaMatch
             );
         });
@@ -347,6 +374,7 @@ async function clientesTableHtml() {
       <table>
         <thead>
           <tr>
+            <th>Código</th>
             <th>Nome</th>
             <th>CPF</th>
             <th>Telefone</th>
@@ -369,6 +397,9 @@ async function clientesTableHtml() {
                 class="row-click"
                 onclick="go('clienteDetalhe',{id:'${c.id}'})"
               >
+                <td class="mono">
+                    ${c.codigo ? String(c.codigo).padStart(6, '0') : '—'}
+                </td>
                 <td><b>${escapeHtml(c.nome)}</b></td>
 
                 <td class="mono">

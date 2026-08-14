@@ -5,48 +5,45 @@ import { icon } from '../core/icons.js';
 import { getServices } from '../core/firestore.js';
 
 
-export async function searchResults() {
+function searchResults() {
     const q = normalize(state.SEARCH_QUERY);
-
     if (!q) return [];
 
     const results = [];
-    const qDigits = onlyDigits(state.SEARCH_QUERY);
 
-    for (const c of state.DATA.clientes) {
+    state.DATA.clientes.forEach(c => {
         const nome = normalize(c.nome);
         const cpf = onlyDigits(c.cpf);
         const telefone = onlyDigits(c.telefone);
+        const codigo = String(c.codigo || '').padStart(6, '0');
+        const qDigits = onlyDigits(state.SEARCH_QUERY);
 
         let match =
             nome.includes(q) ||
             (qDigits && cpf.includes(qDigits)) ||
-            (qDigits && telefone.includes(qDigits));
+            (qDigits && telefone.includes(qDigits)) ||
+            (qDigits && codigo.includes(qDigits));
 
         let placaMatch = null;
 
-        const servicos = await getServices(c.id);
-
-        for (const s of servicos) {
+        (c.servicos || []).forEach(s => {
             if (
                 normalize(s.placa)
-                    .replace(/-/g, '')
-                    .includes(q.replace(/-/g, '')) &&
+                .replace(/-/g, '')
+                .includes(q.replace(/-/g, '')) &&
                 q.length >= 2
             ) {
                 placaMatch = s.placa;
-                break;
             }
-        }
+        });
 
         if (match || placaMatch) {
             results.push({
                 cliente: c,
-                placaMatch,
-                servicos
+                placaMatch
             });
         }
-    }
+    });
 
     return results.slice(0, 8);
 }
@@ -75,17 +72,18 @@ export async function searchDropdownHtml() {
                     <b>${escapeHtml(r.cliente.nome)}</b>
 
                     <div class="meta">
+                        Código ${r.cliente.codigo ? String(r.cliente.codigo).padStart(6, '0') : '—'} ·
                         CPF ${escapeHtml(r.cliente.cpf || '—')}
                         · Tel ${escapeHtml(r.cliente.telefone || '—')}
                         ${r.placaMatch
-                ? ' · Placa ' + escapeHtml(r.placaMatch.toUpperCase())
-                : ''}
+                            ? ' · Placa ' + escapeHtml(r.placaMatch.toUpperCase())
+                            : ''}
                     </div>
                 </div>
 
                 <span class="badge badge-gray">
-                        ${r.servicos.length}
-                        serviço${r.servicos.length === 1 ? '' : 's'}
+                    ${(r.cliente.servicos || []).length}
+                    serviço${(r.cliente.servicos || []).length === 1 ? '' : 's'}
                 </span>
 
             </div>

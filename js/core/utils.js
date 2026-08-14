@@ -207,3 +207,29 @@ export function isValidCPF(value) {
 
     return digit === Number(cpf[10]);
 }
+
+export function formatName(name) {
+    const minorWords = new Set([
+        'da',
+        'de',
+        'do',
+        'das',
+        'dos',
+        'e'
+    ]);
+
+    return (name || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLocaleLowerCase('pt-BR')
+        .split(' ')
+        .map((word, index) => {
+            if (index > 0 && minorWords.has(word)) {
+                return word;
+            }
+
+            return word.charAt(0).toLocaleUpperCase('pt-BR') +
+                word.slice(1);
+        })
+        .join(' ');
+}
