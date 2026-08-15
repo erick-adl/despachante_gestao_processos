@@ -3,7 +3,8 @@ import { state } from '../core/state.js';
 import {
     escapeHtml,
     fmtMoney,
-    fmtDateShort
+    fmtDateShort,
+    onlyDigits
 } from '../core/utils.js';
 
 import { icon } from '../core/icons.js';
@@ -57,7 +58,13 @@ export async function viewClienteDetalhe(id) {
         </b>
         </div>
           <div class="meta-item"><span>CPF</span><b class="mono">${escapeHtml(c.cpf || '—')}</b></div>
-          <div class="meta-item"><span>Telefone</span><b class="mono">${escapeHtml(c.telefone || '—')}</b></div>
+          <div class="meta-item">
+            <span>Telefone</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <b class="mono">${escapeHtml(c.telefone || '—')}</b>
+              ${c.telefone ? `<a href="https://wa.me/55${onlyDigits(c.telefone)}" target="_blank" title="Abrir WhatsApp" style="color:#25D366;line-height:0;font-size:18px;">${icon('whatsapp')}</a>` : ''}
+            </div>
+          </div>
           <div class="meta-item"><span>CNH</span><b class="mono">${escapeHtml(c.cnh || '—')}</b></div>
           <div class="meta-item"><span>Endereço</span><b>${escapeHtml(c.endereco || '—')}</b></div>
         </div>
