@@ -1,7 +1,8 @@
 export const state = {
     DATA: {
         clientes: [],
-        agenda: []
+        agenda: [],
+        statusServicos: []
     },
 
     VIEW: {

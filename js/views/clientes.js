@@ -32,6 +32,17 @@ import { showToast } from '../components/toast.js';
 import { emptyState } from '../components/emptyState.js';
 
 let CLIENTES_LIST_QUERY = '';
+let CLIENTES_LIST_FILTER = null;
+
+export function showPendingClients() {
+    CLIENTES_LIST_FILTER = 'servicosPendentes';
+    go('clientes');
+}
+
+export function clearClientsFilter() {
+    CLIENTES_LIST_FILTER = null;
+    go('clientes');
+}
 
 
 
@@ -48,6 +59,13 @@ export async function viewClientesList() {
                     ${icon('plus')} Novo cliente
                 </button>
             </div>
+
+            ${CLIENTES_LIST_FILTER === 'servicosPendentes' ? `
+                <div class="card" style="padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <span><b>Filtro ativo:</b> clientes com serviços pendentes</span>
+                    <button class="btn btn-ghost btn-sm" onclick="clearClientsFilter()">Limpar filtro</button>
+                </div>
+            ` : ''}
 
             <div class="search-list-wrap">
                 <div class="field" style="margin-bottom:16px;">
@@ -362,6 +380,16 @@ async function clientesTableHtml() {
 
     let list = clientesComServicos.slice();
 
+    if (CLIENTES_LIST_FILTER === 'servicosPendentes') {
+        list = list.filter(c => c.servicosCarregados.some(service => {
+            const status = state.DATA.statusServicos.find(
+                item => item.id === service.statusId
+            );
+
+            return !status || !status.concluido;
+        }));
+    }
+
     if (CLIENTES_LIST_QUERY.trim()) {
         list = list.filter(c => {
             const nome = normalize(c.nome);
@@ -400,6 +428,12 @@ async function clientesTableHtml() {
                 'Nenhum cliente encontrado',
                 'Tente buscar por outro nome, CPF, telefone ou placa.'
             )
+            : CLIENTES_LIST_FILTER === 'servicosPendentes'
+                ? emptyState(
+                    'check',
+                    'Nenhum cliente com serviço pendente',
+                    'Todos os serviços cadastrados estão concluídos.'
+                )
             : emptyState(
                 'users',
                 'Nenhum cliente cadastrado ainda',

@@ -96,12 +96,15 @@ export async function viewClienteDetalhe(id) {
 function serviceCardHtml(c, s) {
   const anexos = (s.anexos && s.anexos.length) ? s.anexos : (s.anexoNome ? [{ nome: s.anexoNome, mime: 'application/pdf', key: 'anexo:' + s.id }] : []);
   const cobrancas = s.cobrancas || [];
+  const status = state.DATA.statusServicos.find(item => item.id === s.statusId);
+  const statusNome = status ? status.nome : 'Em andamento';
   const totalCobrado = cobrancas.reduce((a, x) => a + (Number(x.valor) || 0), 0);
   return `<div class="service-card">
     <div class="service-card-top">
       <div class="service-title">
         ${renderPlateChip(s.placa)}
         <div style="display:flex;flex-wrap:wrap;gap:6px;">${tiposArray(s.tipoServico).map(t => `<span class="badge badge-orange">${escapeHtml(t)}</span>`).join('') || '<span class="badge badge-gray">Serviço</span>'}</div>
+        <span class="badge badge-gray">${escapeHtml(statusNome)}</span>
         <span class="badge badge-gray mono">${fmtDateShort(s.data)}</span>
       </div>
       <div style="display:flex;gap:6px;">

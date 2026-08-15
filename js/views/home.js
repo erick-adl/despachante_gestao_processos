@@ -26,11 +26,23 @@ export async function viewHome() {
   let start = today, end = today;
   if (state.HOME_PERIOD === 'semana') { const r = weekRangeISO(today); start = r.start; end = r.end; }
   if (state.HOME_PERIOD === 'mes') { const r = monthRangeISO(today); start = r.start; end = r.end; }
-  const todosServicos = (
-    await Promise.all(
-      state.DATA.clientes.map(c => getServices(c.id))
-    )
-  ).flat();
+  const servicosPorCliente = await Promise.all(
+    state.DATA.clientes.map(async cliente => ({
+      cliente,
+      servicos: await getServices(cliente.id)
+    }))
+  );
+  const todosServicos = servicosPorCliente.flatMap(item => item.servicos);
+
+  const clientesComPendencias = servicosPorCliente.filter(item =>
+    item.servicos.some(servico => {
+      const status = state.DATA.statusServicos.find(
+        itemStatus => itemStatus.id === servico.statusId
+      );
+
+      return !status || !status.concluido;
+    })
+  );
 
   const servicos = todosServicos.filter(
     s => s.data >= start && s.data <= end
@@ -85,6 +97,13 @@ export async function viewHome() {
         <div class="stat-value">${agendaHoje.length}</div>
         <div class="stat-sub">${agendaSemana.length} nos próximos 7 dias</div>
         <button class="btn btn-ghost btn-sm" style="margin-top:14px;" onclick="openAgendaForm()">${icon('plus')} Novo compromisso</button>
+      </div>
+
+      <div class="card" style="cursor:pointer;" onclick="showPendingClients()" title="Ver clientes com serviços pendentes">
+        <div class="card-head"><h3>Clientes com pendências</h3></div>
+        <div class="stat-value">${clientesComPendencias.length}</div>
+        <div class="stat-sub">com ao menos um serviço não concluído</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:14px;" onclick="event.stopPropagation();showPendingClients()">Ver clientes</button>
       </div>
     </div>
 

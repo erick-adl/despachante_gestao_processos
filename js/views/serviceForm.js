@@ -26,9 +26,12 @@ import {
 
 import {
     getService,
+    getServices,
     saveService,
     deleteService,
-    saveConfiguracoes
+    saveConfiguracoes,
+    saveServiceStatus,
+    deleteServiceStatus
 } from '../core/firestore.js';
 
 const TIPO_MULTA = 'Recurso de multas/CNH';
@@ -65,6 +68,15 @@ export async function openServiceForm(clienteId, servicoId) {
         <button class="icon-btn" onclick="closeModal('serviceFormOverlay')">${icon('x')}</button>
       </div>
       <div class="form-modal-body">
+        <div class="field">
+          <label>Status do serviço</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="s_status" style="flex:1;">
+              ${statusOptionsHtml(s ? s.statusId : 'em-andamento')}
+            </select>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="openManageStatuses()">${icon('edit')} Gerenciar</button>
+          </div>
+        </div>
         <div class="field">
           <label>Data do serviço</label>
           <input id="s_data" type="date" value="${s ? s.data : todayISO()}">
@@ -154,6 +166,181 @@ export async function openServiceForm(clienteId, servicoId) {
 </button>      </div>
     </div>`;
     document.body.appendChild(overlay);
+}
+
+function statusOptionsHtml(selectedId) {
+    return state.DATA.statusServicos.map(status => `
+        <option value="${escapeHtml(status.id)}" ${status.id === selectedId ? 'selected' : ''}>
+            ${escapeHtml(status.nome)}
+        </option>
+    `).join('');
+}
+
+export function openManageStatuses() {
+    const overlay = document.createElement('div');
+    overlay.className = 'form-overlay';
+    overlay.id = 'manageStatusesOverlay';
+    overlay.style.zIndex = 150;
+    overlay.innerHTML = `
+    <div class="form-modal" style="max-width:460px;">
+      <div class="form-modal-head">
+        <h3>Gerenciar status de serviço</h3>
+        <button class="icon-btn" onclick="closeModal('manageStatusesOverlay')">${icon('x')}</button>
+      </div>
+      <div class="form-modal-body">
+        <div id="statusesManageList">${statusesManageListHtml()}</div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <input id="newStatusInput" placeholder="Novo status" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmNewStatus();}">
+          <button type="button" class="btn btn-primary btn-sm" onclick="confirmNewStatus()">Adicionar</button>
+        </div>
+        <div class="hint" style="margin-top:10px;">O status Concluído é mantido para identificar serviços finalizados.</div>
+      </div>
+      <div class="form-modal-foot">
+        <button class="btn btn-ghost" onclick="closeModal('manageStatusesOverlay')">Fechar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+}
+
+function statusesManageListHtml() {
+    return state.DATA.statusServicos.map(status => {
+        const locked = status.concluido;
+
+        return `<div class="tipo-manage-row">
+          <input value="${escapeHtml(status.nome)}" ${locked ? 'disabled' : ''} data-status-id="${escapeHtml(status.id)}" data-original="${escapeHtml(status.nome)}" onchange="renameStatus(this)">
+          ${locked
+                ? '<span class="hint" style="margin:0;white-space:nowrap;">Status final</span>'
+                : `<button class="icon-btn" title="Excluir status" onclick="deleteStatus('${status.id}')">${icon('trash')}</button>`}
+        </div>`;
+    }).join('');
+}
+
+function normalizeStatusName(value) {
+    return value.trim().toLocaleLowerCase('pt-BR');
+}
+
+function refreshStatusesUi() {
+    const manageList = document.getElementById('statusesManageList');
+    if (manageList) manageList.innerHTML = statusesManageListHtml();
+
+    const select = document.getElementById('s_status');
+    if (select) {
+        const selectedId = select.value;
+        select.innerHTML = statusOptionsHtml(selectedId);
+    }
+}
+
+export async function confirmNewStatus() {
+    const input = document.getElementById('newStatusInput');
+    const nome = input.value.trim();
+
+    if (!nome) {
+        showToast('Digite o nome do novo status.', true);
+        return;
+    }
+
+    if (state.DATA.statusServicos.some(status =>
+        normalizeStatusName(status.nome) === normalizeStatusName(nome)
+    )) {
+        showToast('Já existe um status com esse nome.', true);
+        return;
+    }
+
+    const status = { id: uid(), nome, concluido: false };
+
+    try {
+        await saveServiceStatus(status);
+        state.DATA.statusServicos.push(status);
+        state.DATA.statusServicos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        input.value = '';
+        refreshStatusesUi();
+        showToast('Status adicionado.');
+    } catch (error) {
+        console.error('Erro ao adicionar status:', error);
+        showToast('Não foi possível adicionar o status.', true);
+    }
+}
+
+export async function renameStatus(el) {
+    const status = state.DATA.statusServicos.find(item => item.id === el.dataset.statusId);
+    const nome = el.value.trim();
+
+    if (!status || status.concluido) return;
+
+    if (!nome) {
+        showToast('O nome do status não pode ficar vazio.', true);
+        el.value = status.nome;
+        return;
+    }
+
+    if (normalizeStatusName(nome) === normalizeStatusName(status.nome)) {
+        el.value = status.nome;
+        return;
+    }
+
+    if (state.DATA.statusServicos.some(item =>
+        item.id !== status.id &&
+        normalizeStatusName(item.nome) === normalizeStatusName(nome)
+    )) {
+        showToast('Já existe um status com esse nome.', true);
+        el.value = status.nome;
+        return;
+    }
+
+    const nomeAnterior = status.nome;
+
+    try {
+        await saveServiceStatus({
+            ...status,
+            nome
+        });
+        status.nome = nome;
+        state.DATA.statusServicos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        refreshStatusesUi();
+        showToast('Status renomeado.');
+    } catch (error) {
+        console.error('Erro ao renomear status:', error);
+        el.value = nomeAnterior;
+        showToast('Não foi possível renomear o status.', true);
+    }
+}
+
+async function statusIsInUse(statusId) {
+    const servicesByClient = await Promise.all(
+        state.DATA.clientes.map(client => getServices(client.id))
+    );
+
+    return servicesByClient.some(services =>
+        services.some(service => service.statusId === statusId)
+    );
+}
+
+export function deleteStatus(statusId) {
+    const status = state.DATA.statusServicos.find(item => item.id === statusId);
+
+    if (!status || status.concluido) {
+        showToast('O status Concluído não pode ser excluído.', true);
+        return;
+    }
+
+    showConfirm(`Excluir o status “${status.nome}”?`, async function () {
+        try {
+            if (await statusIsInUse(statusId)) {
+                showToast('Este status está em uso e não pode ser excluído.', true);
+                return;
+            }
+
+            await deleteServiceStatus(statusId);
+            state.DATA.statusServicos = state.DATA.statusServicos.filter(
+                item => item.id !== statusId
+            );
+            refreshStatusesUi();
+            showToast('Status excluído.');
+        } catch (error) {
+            console.error('Erro ao excluir status:', error);
+            showToast('Não foi possível excluir o status.', true);
+        }
+    });
 }
 
 function tiposChecklistHtml() {
@@ -401,9 +588,15 @@ export async function submitServiceForm(clienteId, existingId) {
     try {
         const c = state.DATA.clientes.find(x => x.id === clienteId);
         const data = document.getElementById('s_data').value || todayISO();
+        const statusId = document.getElementById('s_status').value;
 
         if (state.CURRENT_TIPOS.length === 0) {
             showToast('Selecione ao menos um tipo de serviço.', true);
+            return;
+        }
+
+        if (!state.DATA.statusServicos.some(status => status.id === statusId)) {
+            showToast('Selecione um status válido para o serviço.', true);
             return;
         }
 
@@ -422,6 +615,7 @@ export async function submitServiceForm(clienteId, existingId) {
 
         const payload = {
             data,
+            statusId,
             placa: document.getElementById('s_placa').value.trim().toUpperCase(),
             renavam: document.getElementById('s_renavam').value.trim(),
             cnh: onlyDigits(document.getElementById('s_cnh').value).slice(0, 11),

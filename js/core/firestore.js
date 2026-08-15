@@ -162,6 +162,56 @@ export async function deleteService(clienteId, serviceId) {
 }
 
 /* =========================
+   STATUS DE SERVIÇO
+   ========================= */
+
+const STATUS_SERVICO_PADRAO = [
+    { id: 'em-andamento', nome: 'Em andamento', concluido: false },
+    { id: 'aguardando-detran', nome: 'Aguardando DETRAN', concluido: false },
+    { id: 'aguardando-pagamento', nome: 'Aguardando pagamento', concluido: false },
+    { id: 'concluido', nome: 'Concluído', concluido: true }
+];
+
+export async function getServiceStatuses() {
+    const statusesRef = collection(db, 'statusServicos');
+    const snapshot = await getDocs(statusesRef);
+
+    return snapshot.docs
+        .filter(snapshotDoc => snapshotDoc.id !== '_meta')
+        .map(snapshotDoc => ({
+            id: snapshotDoc.id,
+            ...snapshotDoc.data()
+        }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+export async function ensureServiceStatuses() {
+    const metaRef = doc(db, 'statusServicos', '_meta');
+    const metaSnapshot = await getDoc(metaRef);
+
+    if (!metaSnapshot.exists()) {
+        await Promise.all([
+            setDoc(metaRef, { initialized: true }),
+            ...STATUS_SERVICO_PADRAO.map(status =>
+                setDoc(doc(db, 'statusServicos', status.id), status)
+            )
+        ]);
+    }
+
+    return getServiceStatuses();
+}
+
+export async function saveServiceStatus(status) {
+    const statusRef = doc(db, 'statusServicos', status.id);
+
+    await setDoc(statusRef, cleanData(status));
+}
+
+export async function deleteServiceStatus(statusId) {
+    await deleteDoc(doc(db, 'statusServicos', statusId));
+}
+
+/* =========================
    CONFIGURAÇÕES
    ========================= */
 

@@ -21,6 +21,8 @@ import {
 import {
   viewClientesList,
   onClientesSearchInput,
+  showPendingClients,
+  clearClientsFilter,
   resetClientesListQuery,
   openClientForm,
   submitClientForm,
@@ -45,6 +47,10 @@ import {
   openManageTipos,
   renameTipo,
   deleteTipo,
+  openManageStatuses,
+  confirmNewStatus,
+  renameStatus,
+  deleteStatus,
   addInfracao,
   updateInfracao,
   removeInfracao,
@@ -70,7 +76,10 @@ import {
 
 import {
   getClients,
-  getAgenda
+  getAgenda,
+  getServices,
+  saveService,
+  ensureServiceStatuses
 } from './core/firestore.js';
 
 import { applyTheme } from './core/theme.js';
@@ -87,6 +96,25 @@ async function loadData() {
     const agenda = await getAgenda();
 
     state.DATA.agenda = agenda;
+    state.DATA.statusServicos = await ensureServiceStatuses();
+
+    const statusEmAndamento = state.DATA.statusServicos.find(
+      status => status.id === 'em-andamento'
+    );
+
+    if (statusEmAndamento) {
+      await Promise.all(clients.map(async client => {
+        const services = await getServices(client.id);
+
+        await Promise.all(services
+          .filter(service => !service.statusId)
+          .map(service => saveService(client.id, {
+            ...service,
+            statusId: statusEmAndamento.id
+          }))
+        );
+      }));
+    }
   } catch (e) {
     console.error(
       'Erro ao carregar clientes do Firestore:',
@@ -291,6 +319,11 @@ Object.assign(window, {
   renameTipo,
   deleteTipo,
 
+  openManageStatuses,
+  confirmNewStatus,
+  renameStatus,
+  deleteStatus,
+
   addInfracao,
   updateInfracao,
   removeInfracao,
@@ -307,6 +340,8 @@ Object.assign(window, {
   onSearchInput,
   submitSearch,
   onClientesSearchInput,
+  showPendingClients,
+  clearClientsFilter,
 
   setReportPeriod,
   updateReportRange,
@@ -322,4 +357,3 @@ Object.assign(window, {
   resetClientesListQuery,
   handleClientFilesChosen,
 });
-
