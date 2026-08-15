@@ -178,6 +178,10 @@ export function openClientForm(clientId) {
           <input id="f_endereco" value="${c ? escapeHtml(c.endereco || '') : ''}" placeholder="Rua, número, bairro, cidade">
         </div>
         <div class="field">
+          <label>Referência</label>
+          <input id="f_referencia" value="${c ? escapeHtml(c.referencia || '') : ''}" placeholder="Ex: indicação, amigo, loja">
+        </div>
+        <div class="field">
           <label>Documentos do cliente (anexos)</label>
           <div id="clientAnexosList">${clientAnexosListHtml()}</div>
           <div class="file-drop" onclick="document.getElementById('f_arquivos').click()">
@@ -237,6 +241,7 @@ export async function submitClientForm(existingId) {
             telefone: document.getElementById('f_telefone').value.trim(),
             cnh: onlyDigits(document.getElementById('f_cnh').value).slice(0, 11),
             endereco: document.getElementById('f_endereco').value.trim(),
+            referencia: document.getElementById('f_referencia').value.trim(),
         };
         let clientId = existingId;
         let clientObj;

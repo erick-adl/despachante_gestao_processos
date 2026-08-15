@@ -67,6 +67,7 @@ export async function viewClienteDetalhe(id) {
           </div>
           <div class="meta-item"><span>CNH</span><b class="mono">${escapeHtml(c.cnh || '—')}</b></div>
           <div class="meta-item"><span>Endereço</span><b>${escapeHtml(c.endereco || '—')}</b></div>
+          <div class="meta-item"><span>Referência</span><b>${escapeHtml(c.referencia || '—')}</b></div>
         </div>
         ${(function () {
       const docs = (c.documentos && c.documentos.length) ? c.documentos : (c.documentoIdentificacao ? [c.documentoIdentificacao] : []);
