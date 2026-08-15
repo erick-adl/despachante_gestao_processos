@@ -22,6 +22,7 @@ import {
   viewClientesList,
   onClientesSearchInput,
   showPendingClients,
+  selectClientsStatusFilter,
   clearClientsFilter,
   resetClientesListQuery,
   openClientForm,
@@ -341,6 +342,7 @@ Object.assign(window, {
   submitSearch,
   onClientesSearchInput,
   showPendingClients,
+  selectClientsStatusFilter,
   clearClientsFilter,
 
   setReportPeriod,

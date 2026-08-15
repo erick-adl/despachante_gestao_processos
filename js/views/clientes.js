@@ -35,7 +35,7 @@ let CLIENTES_LIST_QUERY = '';
 let CLIENTES_LIST_FILTER = null;
 
 export function showPendingClients() {
-    CLIENTES_LIST_FILTER = 'servicosPendentes';
+    CLIENTES_LIST_FILTER = { type: 'pending' };
     go('clientes');
 }
 
@@ -44,6 +44,40 @@ export function clearClientsFilter() {
     go('clientes');
 }
 
+export function selectClientsStatusFilter(statusId) {
+    CLIENTES_LIST_FILTER = { type: 'status', statusId };
+    go('clientes');
+}
+
+function statusFiltersHtml() {
+    const activeStatusId = CLIENTES_LIST_FILTER?.type === 'status'
+        ? CLIENTES_LIST_FILTER.statusId
+        : null;
+
+    return `
+        <div class="period-tabs" style="flex-wrap:wrap;justify-content:flex-start;margin-bottom:16px;">
+            <button class="${!CLIENTES_LIST_FILTER ? 'active' : ''}" onclick="clearClientsFilter()">Todos</button>
+            <button class="${CLIENTES_LIST_FILTER?.type === 'pending' ? 'active' : ''}" onclick="showPendingClients()">Pendentes</button>
+            ${state.DATA.statusServicos.map(status => `
+                <button class="${activeStatusId === status.id ? 'active' : ''}" onclick="selectClientsStatusFilter('${status.id}')">${escapeHtml(status.nome)}</button>
+            `).join('')}
+        </div>
+    `;
+}
+
+function currentFilterLabel() {
+    if (CLIENTES_LIST_FILTER?.type === 'pending') {
+        return 'serviços pendentes';
+    }
+
+    if (CLIENTES_LIST_FILTER?.type === 'status') {
+        return state.DATA.statusServicos.find(
+            status => status.id === CLIENTES_LIST_FILTER.statusId
+        )?.nome || 'status selecionado';
+    }
+
+    return '';
+}
 
 
 export async function viewClientesList() {
@@ -60,14 +94,8 @@ export async function viewClientesList() {
                 </button>
             </div>
 
-            ${CLIENTES_LIST_FILTER === 'servicosPendentes' ? `
-                <div class="card" style="padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                    <span><b>Filtro ativo:</b> clientes com serviços pendentes</span>
-                    <button class="btn btn-ghost btn-sm" onclick="clearClientsFilter()">Limpar filtro</button>
-                </div>
-            ` : ''}
-
             <div class="search-list-wrap">
+                ${statusFiltersHtml()}
                 <div class="field" style="margin-bottom:16px;">
                     <input
                         type="text"
@@ -380,7 +408,7 @@ async function clientesTableHtml() {
 
     let list = clientesComServicos.slice();
 
-    if (CLIENTES_LIST_FILTER === 'servicosPendentes') {
+    if (CLIENTES_LIST_FILTER?.type === 'pending') {
         list = list.filter(c => c.servicosCarregados.some(service => {
             const status = state.DATA.statusServicos.find(
                 item => item.id === service.statusId
@@ -388,6 +416,12 @@ async function clientesTableHtml() {
 
             return !status || !status.concluido;
         }));
+    }
+
+    if (CLIENTES_LIST_FILTER?.type === 'status') {
+        list = list.filter(c => c.servicosCarregados.some(
+            service => service.statusId === CLIENTES_LIST_FILTER.statusId
+        ));
     }
 
     if (CLIENTES_LIST_QUERY.trim()) {
@@ -428,11 +462,11 @@ async function clientesTableHtml() {
                 'Nenhum cliente encontrado',
                 'Tente buscar por outro nome, CPF, telefone ou placa.'
             )
-            : CLIENTES_LIST_FILTER === 'servicosPendentes'
+            : CLIENTES_LIST_FILTER
                 ? emptyState(
                     'check',
-                    'Nenhum cliente com serviço pendente',
-                    'Todos os serviços cadastrados estão concluídos.'
+                    `Nenhum cliente com ${currentFilterLabel()}`,
+                    'Tente selecionar outro status ou limpar o filtro.'
                 )
             : emptyState(
                 'users',
