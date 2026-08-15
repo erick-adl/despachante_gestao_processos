@@ -163,7 +163,15 @@ export function openClientForm(clientId) {
         </div>
         <div class="field">
           <label>CNH</label>
-          <input id="f_cnh" class="mono" value="${c ? escapeHtml(c.cnh || '') : ''}" placeholder="Número de registro da CNH">
+          <input
+            id="f_cnh"
+            class="mono"
+            value="${c ? escapeHtml(onlyDigits(c.cnh || '').slice(0, 11)) : ''}"
+            placeholder="Número de registro da CNH"
+            inputmode="numeric"
+            maxlength="11"
+            oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 11)"
+          >
         </div>
         <div class="field">
           <label>Endereço</label>
@@ -180,7 +188,7 @@ export function openClientForm(clientId) {
       </div>
       <div class="form-modal-foot">
         <button class="btn btn-ghost" onclick="closeModal('clientFormOverlay')">Cancelar</button>
-        <button class="btn btn-primary" onclick="submitClientForm('${isEdit ? c.id : ''}')">${icon('check')} ${isEdit ? 'Salvar alterações' : 'Cadastrar cliente'}</button>
+        <button id="clientSubmitBtn" class="btn btn-primary" onclick="submitClientForm('${isEdit ? c.id : ''}')">${icon('check')} ${isEdit ? 'Salvar alterações' : 'Cadastrar cliente'}</button>
       </div>
     </div>`;
     document.body.appendChild(overlay);
@@ -196,87 +204,112 @@ export function openClientForm(clientId) {
 }
 
 export async function submitClientForm(existingId) {
-    const nome = formatName(document.getElementById('f_nome').value);
-    const cpf = document.getElementById('f_cpf').value.trim();
-
-    if (!nome) {
-        showToast('Informe o nome do cliente.', true);
+    if (state.SAVING_CLIENT) {
         return;
     }
 
-    if (!isValidCPF(cpf)) {
-        showToast('Informe um CPF válido.', true);
-        document.getElementById('f_cpf').focus();
-        return;
+    state.SAVING_CLIENT = true;
+
+    const submitBtn = document.getElementById('clientSubmitBtn');
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'Salvando...';
     }
-    const payload = {
-        nome,
-        cpf,
-        telefone: document.getElementById('f_telefone').value.trim(),
-        cnh: document.getElementById('f_cnh').value.trim(),
-        endereco: document.getElementById('f_endereco').value.trim(),
-    };
-    let clientId = existingId;
-    let clientObj;
 
-    if (existingId) {
-        clientObj = state.DATA.clientes.find(x => x.id === existingId);
+    try {
+        const nome = formatName(document.getElementById('f_nome').value);
+        const cpf = document.getElementById('f_cpf').value.trim();
 
-        Object.assign(clientObj, payload);
-    } else {
-        clientId = uid();
+        if (!nome) {
+            showToast('Informe o nome do cliente.', true);
+            return;
+        }
 
-        clientObj = {
-            id: clientId,
-            criadoEm: todayISO(),
-            ...payload
+        if (!isValidCPF(cpf)) {
+            showToast('Informe um CPF válido.', true);
+            document.getElementById('f_cpf').focus();
+            return;
+        }
+        const payload = {
+            nome,
+            cpf,
+            telefone: document.getElementById('f_telefone').value.trim(),
+            cnh: onlyDigits(document.getElementById('f_cnh').value).slice(0, 11),
+            endereco: document.getElementById('f_endereco').value.trim(),
         };
-    }
-    const docsFinal = [];
-    for (const a of state.CURRENT_CLIENT_ANEXOS) {
-        if (a.status === 'new') {
-            const key = 'clientes/' + clientId + '/' + a.id;
+        let clientId = existingId;
+        let clientObj;
 
-            const uploaded = await saveAnexoFile(
-                key,
-                a.nome,
-                a.base64,
-                a.mime
-            );
+        if (existingId) {
+            clientObj = state.DATA.clientes.find(x => x.id === existingId);
 
-            docsFinal.push({
-                id: a.id,
-                nome: a.nome,
-                mime: a.mime,
-                key,
-                url: uploaded
-            });
+            Object.assign(clientObj, payload);
         } else {
-            docsFinal.push({
-                id: a.id,
-                nome: a.nome,
-                mime: a.mime,
-                key: a.key,
-                url: a.url
-            });
+            clientId = uid();
+
+            clientObj = {
+                id: clientId,
+                criadoEm: todayISO(),
+                ...payload
+            };
+        }
+        const docsFinal = [];
+        for (const a of state.CURRENT_CLIENT_ANEXOS) {
+            if (a.status === 'new') {
+                const key = 'clientes/' + clientId + '/' + a.id;
+
+                const uploaded = await saveAnexoFile(
+                    key,
+                    a.nome,
+                    a.base64,
+                    a.mime
+                );
+
+                docsFinal.push({
+                    id: a.id,
+                    nome: a.nome,
+                    mime: a.mime,
+                    key,
+                    url: uploaded
+                });
+            } else {
+                docsFinal.push({
+                    id: a.id,
+                    nome: a.nome,
+                    mime: a.mime,
+                    key: a.key,
+                    url: a.url
+                });
+            }
+        }
+        for (const key of state.REMOVED_CLIENT_ANEXO_KEYS) { await deleteAnexoFile(key); }
+        clientObj.documentos = docsFinal;
+        delete clientObj.documentoIdentificacao;
+
+        if (existingId) {
+            await saveClient(clientObj);
+        } else {
+            const codigo = await createClientWithCode(clientObj);
+
+            clientObj.codigo = codigo;
+
+            state.DATA.clientes.push(clientObj);
+        }
+        closeModal('clientFormOverlay');
+        showToast(existingId ? 'Cliente atualizado.' : 'Cliente cadastrado. Agora adicione um serviço, se desejar.');
+        go('clienteDetalhe', { id: clientId });
+    } catch (error) {
+        console.error('Erro ao salvar cliente:', error);
+        showToast('Não foi possível salvar o cliente.', true);
+    } finally {
+        state.SAVING_CLIENT = false;
+
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `${icon('check')} ${existingId ? 'Salvar alterações' : 'Cadastrar cliente'}`;
         }
     }
-    for (const key of state.REMOVED_CLIENT_ANEXO_KEYS) { await deleteAnexoFile(key); }
-    clientObj.documentos = docsFinal;
-    delete clientObj.documentoIdentificacao;
-
-    if (existingId) {
-        await saveClient(clientObj);
-    } else {
-        const codigo = await createClientWithCode(clientObj);
-
-        clientObj.codigo = codigo;
-
-        state.DATA.clientes.push(clientObj);
-    }
-    closeModal('clientFormOverlay');
-    showToast(existingId ? 'Cliente atualizado.' : 'Cliente cadastrado. Agora adicione um serviço, se desejar.');
-    go('clienteDetalhe', { id: clientId });
 }
 
 export async function handleClientFilesChosen(input) {

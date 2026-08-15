@@ -4,7 +4,8 @@ import {
     uid,
     fmtMoney,
     todayISO,
-    escapeHtml
+    escapeHtml,
+    onlyDigits
 } from '../core/utils.js';
 
 import { icon } from '../core/icons.js';
@@ -81,7 +82,15 @@ export async function openServiceForm(clienteId, servicoId) {
         <div class="field-row">
           <div class="field">
             <label>CNH</label>
-            <input id="s_cnh" class="mono" value="${s ? escapeHtml(s.cnh || '') : ''}" placeholder="Número da CNH">
+            <input
+              id="s_cnh"
+              class="mono"
+              value="${s ? escapeHtml(onlyDigits(s.cnh || '').slice(0, 11)) : ''}"
+              placeholder="Número da CNH"
+              inputmode="numeric"
+              maxlength="11"
+              oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 11)"
+            >
           </div>
           <div class="field">
             <label>Marca / Modelo do veículo</label>
@@ -415,7 +424,7 @@ export async function submitServiceForm(clienteId, existingId) {
             data,
             placa: document.getElementById('s_placa').value.trim().toUpperCase(),
             renavam: document.getElementById('s_renavam').value.trim(),
-            cnh: document.getElementById('s_cnh').value.trim(),
+            cnh: onlyDigits(document.getElementById('s_cnh').value).slice(0, 11),
             marca: document.getElementById('s_marca').value.trim(),
             tipoServico: state.CURRENT_TIPOS.slice(),
             cobrancas: cobrancasValidas,

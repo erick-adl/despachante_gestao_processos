@@ -29,4 +29,5 @@ export const state = {
     CURRENT_ANEXOS: [],
     REMOVED_ANEXO_KEYS: [],
     SAVING_SERVICE: false,
+    SAVING_CLIENT: false,
 };
