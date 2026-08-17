@@ -623,6 +623,7 @@ export async function submitServiceForm(clienteId, existingId) {
             tipoServico: state.CURRENT_TIPOS.slice(),
             cobrancas: cobrancasValidas,
             lucro: parseFloat(document.getElementById('s_lucro').value) || 0,
+            observacoes: document.getElementById('s_observacoes').value.trim(),
             infracoes: state.CURRENT_TIPOS.includes(TIPO_MULTA)
                 ? infracoesValidas
                 : [],

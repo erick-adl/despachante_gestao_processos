@@ -121,6 +121,7 @@ function serviceCardHtml(c, s) {
       ${cobrancas.map(x => `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px;"><span>${escapeHtml(x.nome || 'Cobrança')}</span><b class="mono">${fmtMoney(x.valor)}</b></div>`).join('')}
       <div style="display:flex;justify-content:space-between;padding-top:7px;margin-top:5px;border-top:1px dashed var(--line);font-weight:700;font-size:12.5px;"><span>Total cobrado</span><b class="mono">${fmtMoney(totalCobrado)}</b></div>
     </div>` : (s.detalhamento ? `<div class="service-detail">${escapeHtml(s.detalhamento)}</div>` : '')}
+    ${s.observacoes ? `<div class="service-detail" style="margin-top:8px;"><b style="display:block;margin-bottom:4px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Observações</b>${escapeHtml(s.observacoes)}</div>` : ''}
     ${s.infracoes && s.infracoes.length ? `<div class="service-detail" style="margin-top:8px;">
       <b style="display:block;margin-bottom:6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);">Infrações recorridas (${s.infracoes.length})</b>
       ${s.infracoes.map(i => `<div style="font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line);"><b>Auto:</b> ${escapeHtml(i.numeroAuto || '—')} &nbsp; <b>Órgão:</b> ${escapeHtml(i.orgaoAutuador || '—')} &nbsp; <b>Infração:</b> ${escapeHtml(i.tipoInfracao || '—')}</div>`).join('')}
