@@ -2,6 +2,7 @@ import { state } from './state.js';
 
 import {
     uploadFile,
+    getFileDownloadUrl,
     deleteFile
 } from './firebaseStorage.js';
 
@@ -30,6 +31,16 @@ export async function deleteAnexoFile(key) {
     }
 
     await deleteFile(user.uid, key);
+}
+
+export async function getAnexoDownloadUrl(key) {
+    const user = window.getCurrentUser();
+
+    if (!user) {
+        throw new Error('Usuário não autenticado.');
+    }
+
+    return await getFileDownloadUrl(user.uid, key);
 }
 
 export function readFileAsBase64(file) {

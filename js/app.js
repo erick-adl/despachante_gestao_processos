@@ -13,6 +13,7 @@ import {
   setRenderFunction
 } from './core/router.js';
 import { closeModal } from './components/modal.js';
+import { getAnexoDownloadUrl } from './core/storage.js';
 import { viewHome } from './views/home.js';
 import {
   onSearchInput,
@@ -269,9 +270,18 @@ async function init() {
   render();
 }
 
-function downloadAnexoFile(encodedUrl, encodedFilename) {
-  const url = decodeURIComponent(encodedUrl);
+async function downloadAnexoFile(encodedUrl, encodedFilename, encodedKey = '') {
+  let url = decodeURIComponent(encodedUrl || '');
   const filename = decodeURIComponent(encodedFilename);
+  const key = decodeURIComponent(encodedKey || '');
+
+  if (!url && key) {
+    try {
+      url = await getAnexoDownloadUrl(key);
+    } catch (error) {
+      console.error('Erro ao obter URL do anexo:', error);
+    }
+  }
 
   if (!url) {
     showToast('Anexo não encontrado.', true);

@@ -72,7 +72,7 @@ export async function viewClienteDetalhe(id) {
         ${(function () {
       const docs = (c.documentos && c.documentos.length) ? c.documentos : (c.documentoIdentificacao ? [c.documentoIdentificacao] : []);
       if (!docs.length) return '';
-      return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">${docs.map(d => `<button class="anexo-link" onclick="downloadAnexoFile('${encodeURIComponent(d.url || '')}','${encodeURIComponent(d.nome)}')">${icon('file')} ${escapeHtml(d.nome)}</button>`).join('')}</div>`;
+      return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">${docs.map(d => `<button class="anexo-link" onclick="downloadAnexoFile('${encodeURIComponent(d.url || '')}','${encodeURIComponent(d.nome)}','${encodeURIComponent(d.key || '')}')">${icon('file')} ${escapeHtml(d.nome)}</button>`).join('')}</div>`;
     })()}
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;">
@@ -128,7 +128,7 @@ function serviceCardHtml(c, s) {
     </div>` : ''}
     <div class="service-foot" style="${anexos.length > 1 ? 'align-items:flex-start;' : ''}">
       <div class="lucro-tag mono">${fmtMoney(s.lucro)}</div>
-      ${anexos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;">${anexos.map(a => `<button class="anexo-link" onclick="downloadAnexoFile('${encodeURIComponent(a.url || '')}','${encodeURIComponent(a.nome)}')">${icon('file')} ${escapeHtml(a.nome)}</button>`).join('')}</div>` : '<span></span>'}
+      ${anexos.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;">${anexos.map(a => `<button class="anexo-link" onclick="downloadAnexoFile('${encodeURIComponent(a.url || '')}','${encodeURIComponent(a.nome)}','${encodeURIComponent(a.key || '')}')">${icon('file')} ${escapeHtml(a.nome)}</button>`).join('')}</div>` : '<span></span>'}
     </div>
   </div>`;
 }

@@ -527,10 +527,10 @@ function anexosListHtml() {
             ${icon('file')}
             ${escapeHtml(a.nome)}
 
-            ${a.url ? `
+            ${a.url || a.key ? `
                 <button
                     type="button"
-                    onclick="downloadAnexoFile('${encodeURIComponent(a.url || '')}', '${encodeURIComponent(a.nome)}')"
+                    onclick="downloadAnexoFile('${encodeURIComponent(a.url || '')}', '${encodeURIComponent(a.nome)}', '${encodeURIComponent(a.key || '')}')"
                     title="Baixar">
                     ${icon('download')}
                 </button>
@@ -664,7 +664,7 @@ export async function submitServiceForm(clienteId, existingId) {
                     ':' +
                     a.id;
 
-                await saveAnexoFile(
+                const url = await saveAnexoFile(
                     key,
                     a.nome,
                     a.base64,
@@ -675,14 +675,16 @@ export async function submitServiceForm(clienteId, existingId) {
                     id: a.id,
                     nome: a.nome,
                     mime: a.mime,
-                    key
+                    key,
+                    url
                 });
             } else {
                 anexosFinal.push({
                     id: a.id,
                     nome: a.nome,
                     mime: a.mime,
-                    key: a.key
+                    key: a.key,
+                    url: a.url
                 });
             }
         }

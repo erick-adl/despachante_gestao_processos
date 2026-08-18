@@ -25,6 +25,12 @@ export async function uploadFile(userId, key, base64, mime) {
     return await getDownloadURL(fileRef);
 }
 
+export async function getFileDownloadUrl(userId, key) {
+    const fileRef = ref(storage, `escritorios/${userId}/${key}`);
+
+    return await getDownloadURL(fileRef);
+}
+
 export async function deleteFile(userId, key) {
     const fileRef = ref(storage, `escritorios/${userId}/${key}`);
 

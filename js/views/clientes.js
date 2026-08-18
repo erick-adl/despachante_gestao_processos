@@ -135,10 +135,10 @@ function clientAnexosListHtml() {
             ${icon('file')}
             ${escapeHtml(a.nome)}
 
-            ${a.url ? `
+            ${a.url || a.key ? `
                 <button
                     type="button"
-                    onclick="downloadAnexoFile('${encodeURIComponent(a.url)}', '${encodeURIComponent(a.nome)}')"
+                    onclick="downloadAnexoFile('${encodeURIComponent(a.url || '')}', '${encodeURIComponent(a.nome)}', '${encodeURIComponent(a.key || '')}')"
                     title="Baixar">
                     ${icon('download')}
                 </button>
