@@ -697,11 +697,6 @@ export async function submitServiceForm(clienteId, existingId) {
 
         delete sObj.anexoNome;
 
-        console.log('Salvando serviço:', {
-            clienteId,
-            servicoId,
-            service: sObj
-        });
 
         await saveService(clienteId, sObj);
 

@@ -5,18 +5,39 @@ import { icon } from '../core/icons.js';
 import { getServices } from '../core/firestore.js';
 
 
-function searchResults() {
+let searchRequestId = 0;
+
+async function searchResults() {
     const q = normalize(state.SEARCH_QUERY);
     if (!q) return [];
 
+    const qDigits = onlyDigits(state.SEARCH_QUERY);
+    const normalizedPlateQuery = q.replace(/[\s-]/g, '');
+
+    const clientesComServicos = await Promise.all(
+        state.DATA.clientes.map(async cliente => {
+            let servicos = [];
+
+            try {
+                servicos = await getServices(cliente.id);
+            } catch (error) {
+                console.error('Erro ao carregar serviços para busca:', error);
+            }
+
+            return {
+                ...cliente,
+                servicos
+            };
+        })
+    );
+
     const results = [];
 
-    state.DATA.clientes.forEach(c => {
+    clientesComServicos.forEach(c => {
         const nome = normalize(c.nome);
         const cpf = onlyDigits(c.cpf);
         const telefone = onlyDigits(c.telefone);
         const codigo = String(c.codigo || '').padStart(6, '0');
-        const qDigits = onlyDigits(state.SEARCH_QUERY);
 
         let match =
             nome.includes(q) ||
@@ -27,10 +48,10 @@ function searchResults() {
         let placaMatch = null;
 
         (c.servicos || []).forEach(s => {
+            const placa = normalize(s.placa).replace(/[\s-]/g, '');
+
             if (
-                normalize(s.placa)
-                .replace(/-/g, '')
-                .includes(q.replace(/-/g, '')) &&
+                placa.includes(normalizedPlateQuery) &&
                 q.length >= 2
             ) {
                 placaMatch = s.placa;
@@ -40,7 +61,8 @@ function searchResults() {
         if (match || placaMatch) {
             results.push({
                 cliente: c,
-                placaMatch
+                placaMatch,
+                servicos: c.servicos
             });
         }
     });
@@ -82,8 +104,8 @@ export async function searchDropdownHtml() {
                 </div>
 
                 <span class="badge badge-gray">
-                    ${(r.cliente.servicos || []).length}
-                    serviço${(r.cliente.servicos || []).length === 1 ? '' : 's'}
+                    ${r.servicos.length}
+                    serviço${r.servicos.length === 1 ? '' : 's'}
                 </span>
 
             </div>
@@ -99,11 +121,18 @@ export async function searchDropdownHtml() {
 
 export async function onSearchInput(value) {
     state.SEARCH_QUERY = value;
+    const requestId = ++searchRequestId;
 
     const dropdown = document.getElementById('searchDropdownHost');
 
     if (dropdown) {
-        dropdown.outerHTML = await searchDropdownHtml();
+        const html = await searchDropdownHtml();
+
+        if (requestId !== searchRequestId || value !== state.SEARCH_QUERY) {
+            return;
+        }
+
+        dropdown.outerHTML = html;
     }
 }
 
